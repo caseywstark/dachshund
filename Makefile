@@ -2,39 +2,36 @@
 #
 
 # The platform file must define the following:
-# INC_PATHS : the include paths
-# LIB_PATHS : the library paths
-# CXX : the c++ compiler
-# CXXFLAGS :
+# CXX : the C++ compiler
+# CPPFLAGS : the preprocessor flags
+# CXXFLAGS : the c++ compile flags
+# LDFLAGS : the link flags
 include platform.make
 
-SRCS = $(wildcard src/*.cc)
-OBJS = $(patsubst src/%.cc, build/%.o, $(SRCS))
+LIB_SRCS = $(wildcard lib/*.cc)
+LIB_OBJS = $(patsubst lib/%.cc, lib/%.o, $(LIB_SRCS))
+MAIN_OBJS = dachshund/main.o
 TARGET = dachshund.ex
 
 TEST_SRCS = $(wildcard test/*.cc)
-TEST_OBJS = $(patsubst test/%.cc, build/test_%.o, $(TEST_SRCS))
+TEST_OBJS = $(patsubst test/%.cc, test/%.o, $(TEST_SRCS))
 TEST_TARGET = test_dachshund.ex
 
 # Targets
 all: $(TARGET)
 
-$(TARGET): build $(OBJS)
-	$(CXX) $(LDFLAGS) $(OBJS) $(LIBS) -o $@
+$(TARGET): $(LIB_OBJS) $(MAIN_OBJS)
+	$(CXX) $(LDFLAGS) $^ $(LIBS) -o $@
 
-$(TEST_TARGET): $(OBJS) $(TEST_OBJS)
-	$(CXX) $(LDFLAGS) $(OBJS) $(TEST_OBJS) $(LIBS) -o $@
+$(TEST_TARGET): $(LIB_OBJS) $(TEST_OBJS)
+	$(CXX) $(LDFLAGS) $^ $(LIBS) -o $@
+
+%.o: %.cc
+	$(CXX) $(DEFINES) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 test: $(TEST_TARGET)
 	./$(TEST_TARGET)
 
-build/%.o: src/%.cc
-	$(CXX) $(DEFINES) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
-
-.PHONEY: build
-build:
-	@mkdir -p build
-
 .PHONEY: clean
 clean:
-	-rm -rf build $(TARGET) $(TEST_TARGET)
+	-rm -f $(TARGET) $(TEST_TARGET) $(TEST_OBJS) $(MAIN_OBJS) $(LIB_OBJS)
