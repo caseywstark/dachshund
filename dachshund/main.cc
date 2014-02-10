@@ -163,30 +163,6 @@ main(int argc, char **argv)
     fread(noise_vec, sizeof(double), num_pixel_elements, skewer_file);
     fclose(skewer_file);
 
-    printf("  skewer_x = ");
-    for (int i = 0; i < num_skewers; ++i) {
-        printf("%g ", skewer_x[i]);
-    }
-    printf("\n");
-
-    printf("  skewer_y = ");
-    for (int i = 0; i < num_skewers; ++i) {
-        printf("%g ", skewer_y[i]);
-    }
-    printf("\n");
-
-    printf("  data = ");
-    for (int k = 0; k < num_pixel_elements; ++k) {
-        printf("%g ", data_vec[k]);
-    }
-    printf("\n");
-
-    printf("  noise = ");
-    for (int k = 0; k < num_pixel_elements; ++k) {
-        printf("%g ", noise_vec[k]);
-    }
-    printf("\n");
-
     // DEBUG
     // Check input data
     check_finite(num_skewers, skewer_x);
