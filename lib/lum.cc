@@ -41,7 +41,7 @@ smd_element_func(int i, int j, void *params)
     double l_perp = p->l_perp;
     double l_para = p->l_para;
     double sigma = p->sigma;
-    GPT *gpt = p->gpt;
+    GT *gt = p->gt;
 
     // grid flat index i -> grid ix, iy, iz
     // probably a faster way to do this...
@@ -52,9 +52,11 @@ smd_element_func(int i, int j, void *params)
     double x1 = dx * (ix + 0.5);
     double y1 = dy * (iy + 0.5);
     double z1 = dz * (iz + 0.5);
-    double x2 = skewer_x[j];
-    double y2 = skewer_y[j];
-    double iz2 = j % np;
+
+    int isk = j / np;
+    int iz2 = j % np;
+    double x2 = skewer_x[isk];
+    double y2 = skewer_y[isk];
     double z2 = dz_pix * (iz2 + 0.5);
 
     // Separation vector components.
@@ -67,7 +69,7 @@ smd_element_func(int i, int j, void *params)
     double x_para = fabs(dz12) / l_para;
 
     // Look up gaussian product.
-    double gp = (*gpt)(x_perp, x_para);
+    double gp = (*gt)(x_perp) * (*gt)(x_para);
     // Don't forget the variance.
     double sn = sigma * gp;
 
@@ -89,17 +91,20 @@ sddn_element_func(int i, int j, void *params)
     double l_para = p->l_para;
     double sigma = p->sigma;
     double *n = p->n;
-    GPT *gpt = p->gpt;
+    GT *gt = p->gt;
 
-    int iz1 = i % np;
-    double x1 = skewer_x[i];
-    double y1 = skewer_y[i];
-    double z1 = dz_pix * (iz1 + 0.5);
+    int isk, iz;
+    isk = i / np;
+    iz = i % np;
+    double x1 = skewer_x[isk];
+    double y1 = skewer_y[isk];
+    double z1 = dz_pix * (iz + 0.5);
 
-    double iz2 = j % np;
-    double x2 = skewer_x[j];
-    double y2 = skewer_y[j];
-    double z2 = dz_pix * (iz2 + 0.5);
+    isk = j / np;
+    iz = j % np;
+    double x2 = skewer_x[isk];
+    double y2 = skewer_y[isk];
+    double z2 = dz_pix * (iz + 0.5);
 
     // Separation vector components.
     double dx12 = x2 - x1;
@@ -111,7 +116,7 @@ sddn_element_func(int i, int j, void *params)
     double x_para = fabs(dz12) / l_para;
 
     // Look up gaussian product.
-    double gp = (*gpt)(x_perp, x_para);
+    double gp = (*gt)(x_perp) * (*gt)(x_para);
     // Don't forget the variance.
     double sn = sigma * gp;
 

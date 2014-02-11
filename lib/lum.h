@@ -5,7 +5,7 @@
 #ifndef __DS_LUM_H__
 #define __DS_LUM_H__
 
-#include "gpt.h"
+#include "gt.h"
 
 class LUM {
   public:
@@ -43,7 +43,7 @@ struct smd_params_struct {
     double l_para;
     double sigma;
 
-    GPT *gpt;
+    GT *gt;
 };
 
 typedef struct smd_params_struct SMDParams;
@@ -63,7 +63,7 @@ struct sddn_params_struct {
     double sigma;
 
     double *n;
-    GPT *gpt;
+    GT *gt;
 };
 
 typedef struct sddn_params_struct SDDNParams;
