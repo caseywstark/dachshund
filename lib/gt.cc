@@ -62,7 +62,7 @@ GT::GT(const int n, const double dx)
 
 GT::~GT()
 {
-    delete table;
+    delete [] table;
 }
 
 double

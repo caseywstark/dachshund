@@ -141,6 +141,8 @@ main(int argc, char **argv)
         }
     }
 
+    fclose(config_file);
+
     int64_t num_cells = (int64_t)nx * (int64_t)ny * (int64_t)nz;
     int64_t num_pixel_elements = (int64_t)num_pixels * (int64_t)num_skewers;
     double dx = lx / nx;
@@ -305,6 +307,25 @@ main(int argc, char **argv)
     FILE *outfile = fopen(output_path.c_str(), "wb");
     fwrite(map_vec, sizeof(double), num_cells, outfile);
     fclose(outfile);
+
+    // So valgrind doesn't whine...
+    delete [] skewer_x;
+    delete [] skewer_y;
+    delete [] data_vec;
+    delete [] noise_vec;
+
+    delete sddn;
+    delete smd;
+    delete p1;
+    delete p2;
+    delete gt;
+
+    delete [] map_vec;
+    delete [] a_j;
+    delete [] d;
+    delete [] q;
+    delete [] r;
+    delete [] s;
 
     return 0;
 }
