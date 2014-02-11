@@ -36,7 +36,9 @@ main(int argc, char **argv)
 
     int num_skewers = 100;
     int num_pixels = 100;
-    std::string data_path = "skewers.bin";
+    std::string coords_path = "skewer_coords.bin";
+    std::string data_path = "skewer_data.bin";
+    std::string weights_path = "skewer_weights.bin";
     int nx = 64;
     int ny = 64;
     int nz = 64;
@@ -88,8 +90,14 @@ main(int argc, char **argv)
         else if (strcmp(key, "num_pixels") == 0) {
             num_pixels = atoi(value);
         }
+        else if (strcmp(key, "coords_path") == 0) {
+            coords_path = value;
+        }
         else if (strcmp(key, "data_path") == 0) {
             data_path = value;
+        }
+        else if (strcmp(key, "weights_path") == 0) {
+            weights_path = value;
         }
         else if (strcmp(key, "nx") == 0) {
             nx = atoi(value);
@@ -143,37 +151,57 @@ main(int argc, char **argv)
     double *skewer_x = new double[num_skewers];
     double *skewer_y = new double[num_skewers];
     double *data_vec = new double[num_pixel_elements];
-    double *noise_vec = new double[num_pixel_elements];
+    double *weights_vec = new double[num_pixel_elements];
 
     //
     // Read in skewers.
     //
 
-    FILE *skewer_file = fopen(data_path.c_str(), "r");
-    if (skewer_file == NULL) {
-        fprintf(stderr, "Could not load file %s.\n", data_path.c_str());
+    puts("Reading skewer files.");
+
+    FILE *coords_file = fopen(coords_path.c_str(), "r");
+    if (coords_file == NULL) {
+        fprintf(stderr, "Could not load file %s.\n", coords_path.c_str());
         exit(1);
     }
 
-    printf("Reading skewers file %s.\n", data_path.c_str());
+    fread(skewer_x, sizeof(double), num_skewers, coords_file);
+    fread(skewer_y, sizeof(double), num_skewers, coords_file);
+    fclose(coords_file);
 
-    fread(skewer_x, sizeof(double), num_skewers, skewer_file);
-    fread(skewer_y, sizeof(double), num_skewers, skewer_file);
-    fread(data_vec, sizeof(double), num_pixel_elements, skewer_file);
-    fread(noise_vec, sizeof(double), num_pixel_elements, skewer_file);
-    fclose(skewer_file);
+    FILE *data_file = fopen(data_path.c_str(), "r");
+    if (data_file == NULL) {
+        fprintf(stderr, "Could not load file %s.\n", data_path.c_str());
+        exit(1);
+    }
+    fread(data_vec, sizeof(double), num_pixel_elements, data_file);
+    fclose(data_file);
+
+    FILE *weights_file = fopen(weights_path.c_str(), "r");
+    if (weights_file == NULL) {
+        fprintf(stderr, "Could not load file %s.\n", weights_path.c_str());
+        exit(1);
+    }
+    fread(weights_vec, sizeof(double), num_pixel_elements, weights_file);
+    fclose(weights_file);
+
+    // temporary
+    double *noise_vec = weights_vec;
+    for (int i = 0; i < num_pixel_elements; ++i) {
+        noise_vec[i] = 1.0 / noise_vec[i];
+    }
 
     // DEBUG
     // Check input data
     check_finite(num_skewers, skewer_x);
     check_finite(num_skewers, skewer_y);
     check_finite(num_skewers, data_vec);
-    check_finite(num_skewers, noise_vec);
+    check_finite(num_skewers, weights_vec);
 
     // Create gpt.
-    int gpt_n = 100;
-    double gpt_dx = 5.0 / gpt_n;
-    GPT *gpt = new GPT(gpt_n, gpt_dx);
+    int gt_n = 100;
+    double gt_dx = 4.0 / gt_n;
+    GT *gt = new GT(gt_n, gt_dx);
 
     //
     // Create matrix lookups.
@@ -198,7 +226,7 @@ main(int argc, char **argv)
     p1->l_perp = l_perp;
     p1->l_para = l_para;
     p1->sigma = sigma_F;
-    p1->gpt = gpt;
+    p1->gt = gt;
 
     // Grab function pointer.
     f = &smd_element_func;
@@ -217,7 +245,7 @@ main(int argc, char **argv)
     p2->l_para = l_para;
     p2->sigma = sigma_F;
     p2->n = noise_vec;
-    p2->gpt = gpt;
+    p2->gt = gt;
 
     // Grab function pointer.
     f = &sddn_element_func;
