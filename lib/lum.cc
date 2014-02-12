@@ -16,7 +16,7 @@ LUM::LUM(int n, int m, double (*e)(int i, int j, void *params), void *p)
 }
 
 double
-LUM::operator()(int i, int j)
+LUM::operator()(int i, int j) const
 {
     double e = (*element_func)(i, j, params);
     return e;

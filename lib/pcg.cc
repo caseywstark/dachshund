@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include <omp.h>
 
 #include "lum.h"
 #include "util.h"
@@ -28,12 +29,15 @@ pcg_invert(const int k, LUM *A, double * const x,
     //   r is the residual.
     //   ...
 
-    int n = A->n;
-    int m = A->m;
+    const int n = A->n;
+    const int m = A->m;
 
     // Setup the residual.
     // r = b - A x
-    for (int i = 0; i < n; ++i) {
+
+    int i, j;
+    #pragma omp parallel for default(none) private(tid, i, j)
+    for (i = 0; i < n; ++i) {
         // Handle b[i]
         if (i == k) {
             r[i] = 1.0;
@@ -43,7 +47,7 @@ pcg_invert(const int k, LUM *A, double * const x,
         }
 
         //r[i] -= A(i, j) * x[j];
-        for (int j = 0; j < m; ++j) {
+        for (j = 0; j < m; ++j) {
             r[i] -= (*A)(i, j) * x[j];
         }
     }
@@ -94,7 +98,7 @@ pcg_invert(const int k, LUM *A, double * const x,
         }
 
         // Update residual.
-        if (iter != 0 && iter % 20 == 0) {
+        if (iter != 0 && iter % 100 == 0) {
             // Full update.
             // r = b - A x
             for (int i = 0; i < n; ++i) {

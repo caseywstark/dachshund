@@ -29,7 +29,7 @@ linterp(const double x, const int nx, const double dx,
     int ix = xx;
     // Check if we are outside table range.
     if (ix > nx - 1) {
-        return 0;
+        return 0.0;
     }
 
     // The weights.

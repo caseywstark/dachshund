@@ -201,7 +201,7 @@ main(int argc, char **argv)
     check_finite(num_skewers, weights_vec);
 
     // Create gpt.
-    int gt_n = 100;
+    int gt_n = 40;
     double gt_dx = 4.0 / gt_n;
     GT *gt = new GT(gt_n, gt_dx);
 
