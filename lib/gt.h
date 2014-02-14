@@ -20,7 +20,7 @@ class GT {
     double dx;
     double *table;
 
-    double operator()(const double x);
+    double f(const double x);
 };
 
 #endif

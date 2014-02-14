@@ -66,7 +66,7 @@ GT::~GT()
 }
 
 double
-GT::operator()(const double x)
+GT::f(const double x)
 {
     double f = linterp(x, n, dx, table);
     return f;
