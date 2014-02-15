@@ -1,6 +1,5 @@
 /*
-
-
+2014, the dachshund authors.
 */
 
 #ifndef __DS_TIMER_H__

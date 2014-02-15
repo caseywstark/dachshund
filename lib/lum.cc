@@ -10,7 +10,7 @@
 #include "lum.h"
 
 double
-smd_element_func(int i, int j)
+smd_element_func(const int i, const int j)
 {
     // grid flat index i -> grid ix, iy, iz
     // probably a faster way to do this...
@@ -47,7 +47,7 @@ smd_element_func(int i, int j)
 
 
 double
-sddn_element_func(int i, int j)
+sddn_element_func(const int i, const int j)
 {
     int isk, iz;
     isk = i / p.num_pixels;

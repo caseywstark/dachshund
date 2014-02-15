@@ -8,9 +8,9 @@
 #include "gt.h"
 
 double
-smd_element_func(int i, int j);
+smd_element_func(const int i, const int j);
 
 double
-sddn_element_func(int i, int j);
+sddn_element_func(const int i, const int j);
 
 #endif

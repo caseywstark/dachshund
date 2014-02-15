@@ -192,6 +192,8 @@ main(int argc, char **argv)
     fread(weights_vec, sizeof(double), num_pixel_elements, weights_file);
     fclose(weights_file);
 
+
+
     // temporary
     double *noise_vec = weights_vec;
     for (int i = 0; i < num_pixel_elements; ++i) {
@@ -219,153 +221,138 @@ main(int argc, char **argv)
     // We care about timing starting here.
     Timer *loop_timer = new Timer();
 
-    // Begin parallel block where we give each thread a block of pixels.
-    #pragma omp parallel
-    {
-        int num_threads = omp_get_num_threads();
-        printf("Running with %i threads.\n", num_threads);
+    // Allocate thread local arrays.
+    int n = num_pixel_elements;
+    double *a_jk = new double[n];
+    double *d = new double[n];
+    double *r = new double[n];
+    double *s = new double[n];
+    double *q = new double[n];
 
-        int k;
-        int n = num_pixel_elements;
+    // Set initial a_jk guess.
+    a_jk[0] = 1.0 / sddn_element_func(0, 0);
+    for (int k = 1; k < n; ++k) {
+        a_jk[k] = 0.0;
+    }
 
-        // Allocate thread local arrays.
-        double *a_jk = new double[n];
-        double *d = new double[n];
-        double *r = new double[n];
-        double *s = new double[n];
-        double *q = new double[n];
+    // The main loop over pixels.
+    for (int j = 0; j < n; ++j) {
 
-        // Set initial a_jk guess.
-        for (int k = 0; k < n; ++k) {
-            if (k == 0) {
-                a_jk[k] = 1.0 / sddn_element_func(k, k);
+        // DEBUG
+        printf("pixel %i\n", j);
+
+        // Setup the residual.
+        // r = b - A x
+        int jj = 0, kk = 0;
+        #pragma omp parallel for private(jj, kk)
+        for (jj = 0; jj < n; ++jj) {
+            // Handle b[i]
+            if (jj == j) {
+                r[jj] = 1.0;
             }
             else {
-                a_jk[k] = 0.0;
+                r[jj] = 0.0;
+            }
+
+            //r[i] -= A(i, j) * x[j];
+            for (kk = 0; kk < n; ++kk) {
+                r[jj] -= sddn_element_func(jj, kk) * a_jk[kk];
             }
         }
 
-        // The main loop over pixels.
-        # pragma omp for
-        for (int j = 0; j < n; ++j) {
+        // The preconditioning.
+        // For now, we will just try a Jacobian M (A diag).
+        // s = M^-1 r
+        for (jj = 0; jj < n; ++jj) {
+            d[jj] = r[jj] / sddn_element_func(jj, jj);
+        }
 
-            // DEBUG
-            printf("pixel %i\n", (int)j);
+        // delta = r^T d
+        double delta_new = 0.0;
+        for (jj = 0; jj < n; ++jj) {
+            delta_new += r[jj] * d[jj];
+        }
 
-            // Setup the residual.
-            // r = b - A x
+        double delta_0 = delta_new;
 
-            int jj, kk = 0;
+        // Handle singular case.
+        //if (delta_0 == 0.0) { return; }
+
+        // the iteration count.
+        int iter = 0;
+        // the CG loop...
+        while (iter < p.pcg_max_iter && delta_new > p.pcg_tol * delta_0) {
+            // q = A d
+            #pragma omp parallel for private(jj, kk)
             for (jj = 0; jj < n; ++jj) {
-                // Handle b[i]
-                if (jj == j) {
-                    r[jj] = 1.0;
-                }
-                else {
-                    r[jj] = 0.0;
-                }
-
-                //r[i] -= A(i, j) * x[j];
+                q[jj] = 0.0;
                 for (kk = 0; kk < n; ++kk) {
-                    r[jj] -= sddn_element_func(jj, kk) * a_jk[kk];
+                    q[jj] += sddn_element_func(jj, kk) * d[kk];
                 }
             }
 
-            // The preconditioning.
-            // For now, we will just try a Jacobian M (A diag).
-            // s = M^-1 r
+            // alpha = delta_new / (d^T q)
+            double denom = 0.0;
             for (jj = 0; jj < n; ++jj) {
-                d[jj] = r[jj] / sddn_element_func(jj, jj);
+                denom += d[jj] * q[jj];
             }
+            double alpha = delta_new / denom;
 
-            // delta = r^T d
-            double delta_new = 0.0;
+            // x = x + alpha d
             for (jj = 0; jj < n; ++jj) {
-                delta_new += r[jj] * d[jj];
+                a_jk[jj] += alpha * d[jj];
             }
 
-            double delta_0 = delta_new;
-
-            // Handle singular case.
-            //if (delta_0 == 0.0) { return; }
-
-            // the iteration count.
-            int iter = 0;
-            // the CG loop...
-            while (iter < p.pcg_max_iter && delta_new > p.pcg_tol * delta_0) {
-                // q = A d
-                for (jj = 0; jj < n; ++jj) {
-                    q[jj] = 0.0;
-                    for (kk = 0; kk < n; ++kk) {
-                        q[jj] += sddn_element_func(jj, kk) * d[kk];
-                    }
-                }
-
-                // alpha = delta_new / (d^T q)
-                double denom = 0.0;
-                for (jj = 0; jj < n; ++jj) {
-                    denom += d[jj] * q[jj];
-                }
-                double alpha = delta_new / denom;
-
-                // x = x + alpha d
-                for (jj = 0; jj < n; ++jj) {
-                    a_jk[jj] += alpha * d[jj];
-                }
-
-                // Update residual.
-                // Approximate update.
-                // r = r - alpha q
-                for (jj = 0; jj < n; ++jj) {
-                    r[jj] -= alpha * q[jj];
-                }
-
-                // reapply preconditioner.
-                for (jj = 0; jj < n; ++jj) {
-                    s[jj] = r[jj] / sddn_element_func(jj, jj);
-                }
-
-                // save current delta.
-                double delta_old = delta_new;
-
-                // Update delta.
-                // delta_new = r^T s
-                delta_new = 0.0;
-                for (jj = 0; jj < n; ++jj) {
-                    delta_new += r[jj] * s[jj];
-                }
-
-                // Update d.
-                double beta = delta_new / delta_old;
-                for (jj = 0; jj < n; ++jj) {
-                    d[jj] = s[jj] + beta * d[jj];
-                }
-
-                // Finally, update the count.
-                ++iter;
+            // Update residual.
+            // Approximate update.
+            // r = r - alpha q
+            for (jj = 0; jj < n; ++jj) {
+                r[jj] -= alpha * q[jj];
             }
 
-            // Dot with data vector.
-            double b = 0.0;
-            for (k = 0; k < n; ++k) {
-                b += a_jk[k] * data_vec[k];
+            // reapply preconditioner.
+            for (jj = 0; jj < n; ++jj) {
+                s[jj] = r[jj] / sddn_element_func(jj, jj);
             }
 
-            // Save this pixel result.
-            b_j[j] = b;
-        } // end omp for
+            // save current delta.
+            double delta_old = delta_new;
 
-        // don't forget to free the thread work arrays.
-        delete [] d;
-        delete [] r;
-        delete [] q;
-        delete [] s;
-        delete [] a_jk;
+            // Update delta.
+            // delta_new = r^T s
+            delta_new = 0.0;
+            for (jj = 0; jj < n; ++jj) {
+                delta_new += r[jj] * s[jj];
+            }
 
-    } // end omp
+            // Update d.
+            double beta = delta_new / delta_old;
+            for (jj = 0; jj < n; ++jj) {
+                d[jj] = s[jj] + beta * d[jj];
+            }
+
+            // Finally, update the count.
+            ++iter;
+        }
+
+        // Dot with data vector.
+        double b = 0.0;
+        for (int k = 0; k < n; ++k) {
+            b += a_jk[k] * data_vec[k];
+        }
+
+        // Save this pixel result.
+        b_j[j] = b;
+    }
 
     printf("Main loop time: %g ms.\n", loop_timer->elapsed());
 
+    // don't forget to free the work arrays.
+    delete [] d;
+    delete [] r;
+    delete [] q;
+    delete [] s;
+    delete [] a_jk;
     delete [] noise_vec;
 
     //
@@ -381,9 +368,10 @@ main(int argc, char **argv)
     }
 
     // Each thread gets a block of cells.
-    #pragma omp parallel for
-    for (int i = 0; i < num_cells; ++i) {
-        for (int j = 0; j < num_pixel_elements; ++j) {
+    int i, j;
+    #pragma omp parallel for private(i, j)
+    for (i = 0; i < num_cells; ++i) {
+        for (j = 0; j < num_pixel_elements; ++j) {
             map_vec[i] += smd_element_func(i, j) * b_j[j];
         }
     }
