@@ -10,6 +10,7 @@ Project header.
 #include "gt.h"
 #include "lum.h"
 #include "params.h"
+#include "pcg.h"
 #include "timer.h"
 #include "util.h"
 

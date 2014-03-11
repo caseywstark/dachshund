@@ -28,7 +28,7 @@ linterp(const double x, const int nx, const double dx,
     // the lower point index.
     int ix = xx;
     // Check if we are outside table range.
-    if (ix > nx - 1) {
+    if (ix > nx - 2) {
         return 0.0;
     }
 

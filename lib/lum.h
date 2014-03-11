@@ -8,9 +8,12 @@
 #include "gt.h"
 
 double
-smd_element_func(const int i, const int j);
+smp_lookup(const int i, const int j);
 
 double
-sddn_element_func(const int i, const int j);
+wsppi_lookup(const int i, const int j);
+
+double
+wspm_lookup(const int i, const int j);
 
 #endif
