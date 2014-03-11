@@ -8,7 +8,7 @@
 int
 main()
 {
-    int n = 8;
+    int n = 4;
     int num_skewers = n*n;
     int num_pixels = n;
     int nn = num_skewers * num_pixels;
@@ -49,16 +49,19 @@ main()
         }
     }
 
-    FILE *coord_file = fopen("skewer_coords.bin", "w");
-    fwrite(sx, sizeof(double), num_skewers, coord_file);
-    fwrite(sy, sizeof(double), num_skewers, coord_file);
-    fclose(coord_file);
+    FILE *skewer_file = fopen("skewer_x.bin", "w");
+    fwrite(sx, sizeof(double), num_skewers, skewer_file);
+    fclose(skewer_file);
 
-    FILE *data_file = fopen("skewer_data.bin", "w");
+    skewer_file = fopen("skewer_y.bin", "w");
+    fwrite(sy, sizeof(double), num_skewers, skewer_file);
+    fclose(skewer_file);
+
+    FILE *data_file = fopen("pixel_data.bin", "w");
     fwrite(data, sizeof(double), nn, data_file);
     fclose(data_file);
 
-    FILE *w_file = fopen("skewer_weights.bin", "w");
+    FILE *w_file = fopen("pixel_weights.bin", "w");
     fwrite(w, sizeof(double), nn, w_file);
     fclose(w_file);
 
