@@ -22,6 +22,7 @@ print_usage()
 int
 main(int argc, char **argv)
 {
+    int i, j;
     Timer *total_timer = new Timer();
 
     // Fancy command line parsing.
@@ -31,363 +32,171 @@ main(int argc, char **argv)
         exit(1);
     }
 
-    std::string input_path = argv[1];
+    std::string config_path = argv[1];
 
     //
-    // Set default params.
+    // Read config file and set params.
     //
 
-    // p is the params object declared in the lib.
-    p.num_skewers = 100;
-    p.num_pixels = 100;
-    p.nx = 64;
-    p.ny = 64;
-    p.nz = 64;
-    p.sigma = 1.0;
-    p.l_perp = 1.0;
-    p.l_para = 1.0;
-    p.pcg_tol = 1.0e-3;
-    p.pcg_max_iter = 100;
-
-    std::string coords_path = "skewer_coords.bin";
-    std::string data_path = "skewer_data.bin";
-    std::string weights_path = "skewer_weights.bin";
-    std::string output_path = "map.bin";
-
-    //
-    // Parse input/config.
-    //
-
-    const static int max_line_length = 1000;
-    char config_buf[max_line_length];
-    char key[100];
-    char value[100];
-
-    // Open input file.
-    FILE *config_file = fopen(input_path.c_str(), "r");
-    // Make sure the input file is ok.
-    if (config_file == NULL) {
-        fprintf(stderr, "Could not load file %s.\n", input_path.c_str());
-        exit(1);
-    }
-
-    printf("Reading config file %s.\n", input_path.c_str());
-
-    // Have we reached the end of the file?
-    while (!feof(config_file)) {
-        // read current line.
-        fgets(config_buf, max_line_length, config_file);
-
-        // Handle blank or comment line.
-        if (config_buf[0] == '\0' || config_buf[0] == '#') {
-            continue;
-        }
-
-        // Parse normal line.
-        sscanf(config_buf, "%s = %s", key, value);
-
-        if (strcmp(key, "num_skewers") == 0) {
-            p.num_skewers = atoi(value);
-        }
-        else if (strcmp(key, "num_pixels") == 0) {
-            p.num_pixels = atoi(value);
-        }
-        else if (strcmp(key, "coords_path") == 0) {
-            coords_path = value;
-        }
-        else if (strcmp(key, "data_path") == 0) {
-            data_path = value;
-        }
-        else if (strcmp(key, "weights_path") == 0) {
-            weights_path = value;
-        }
-        else if (strcmp(key, "nx") == 0) {
-            p.nx = atoi(value);
-        }
-        else if (strcmp(key, "ny") == 0) {
-            p.ny = atoi(value);
-        }
-        else if (strcmp(key, "nz") == 0) {
-            p.nz = atoi(value);
-        }
-        else if (strcmp(key, "lx") == 0) {
-            p.lx = atof(value);
-        }
-        else if (strcmp(key, "ly") == 0) {
-            p.ly = atof(value);
-        }
-        else if (strcmp(key, "lz") == 0) {
-            p.lz = atof(value);
-        }
-        else if (strcmp(key, "output_path") == 0) {
-            output_path = value;
-        }
-        else if (strcmp(key, "sigma_F") == 0) {
-            p.sigma = atof(value);
-        }
-        else if (strcmp(key, "l_perp") == 0) {
-            p.l_perp = atof(value);
-        }
-        else if (strcmp(key, "l_para") == 0) {
-            p.l_para = atof(value);
-        }
-        else if (strcmp(key, "pcg_tol") == 0) {
-            p.pcg_tol = atof(value);
-        }
-        else if (strcmp(key, "pcg_max_iter") == 0) {
-            p.pcg_max_iter = atoi(value);
-        }
-        else {
-            fprintf(stderr, "Unknown key '%s' in config.\n", key);
-            exit(1);
-        }
-    }
-
-    fclose(config_file);
-
-    int64_t num_cells = (int64_t)p.nx * (int64_t)p.ny * (int64_t)p.nz;
-    int64_t num_pixel_elements = (int64_t)p.num_pixels * (int64_t)p.num_skewers;
-    p.dx = p.lx / p.nx;
-    p.dy = p.ly / p.ny;
-    p.dz = p.lz / p.nz;
-    p.dz_pix = p.lz / p.num_pixels;
-
-    double *skewer_x = new double[p.num_skewers];
-    double *skewer_y = new double[p.num_skewers];
-    double *data_vec = new double[num_pixel_elements];
-    double *weights_vec = new double[num_pixel_elements];
-
-    p.skewer_x = skewer_x;
-    p.skewer_y = skewer_y;
+    ds_params_init(config_path);
 
     //
     // Read in skewers.
     //
 
+    double *skewer_x = new double[p.num_skewers];
+    double *skewer_y = new double[p.num_skewers];
+    double *pixel_data = new double[p.num_pixel_elements];
+    double *pixel_weights = new double[p.num_pixel_elements];
+
     puts("Reading skewer files.");
 
-    FILE *coords_file = fopen(coords_path.c_str(), "r");
-    if (coords_file == NULL) {
-        fprintf(stderr, "Could not load file %s.\n", coords_path.c_str());
+    // Skewer positions
+    FILE *skewer_file = fopen(p.skewer_x_path.c_str(), "r");
+    if (skewer_file == NULL) {
+        fprintf(stderr, "Could not load file %s.\n", p.skewer_x_path.c_str());
         exit(1);
     }
+    fread(skewer_x, sizeof(double), p.num_skewers, skewer_file);
+    fclose(skewer_file);
 
-    fread(skewer_x, sizeof(double), p.num_skewers, coords_file);
-    fread(skewer_y, sizeof(double), p.num_skewers, coords_file);
-    fclose(coords_file);
+    skewer_file = fopen(p.skewer_y_path.c_str(), "r");
+    if (skewer_file == NULL) {
+        fprintf(stderr, "Could not load file %s.\n", p.skewer_y_path.c_str());
+        exit(1);
+    }
+    fread(skewer_y, sizeof(double), p.num_skewers, skewer_file);
+    fclose(skewer_file);
 
-    FILE *data_file = fopen(data_path.c_str(), "r");
+    // Skewer fluxes
+    FILE *data_file = fopen(p.pixel_data_path.c_str(), "r");
     if (data_file == NULL) {
-        fprintf(stderr, "Could not load file %s.\n", data_path.c_str());
+        fprintf(stderr, "Could not load file %s.\n", p.pixel_data_path.c_str());
         exit(1);
     }
-    fread(data_vec, sizeof(double), num_pixel_elements, data_file);
+    fread(pixel_data, sizeof(double), p.num_pixel_elements, data_file);
     fclose(data_file);
 
-    FILE *weights_file = fopen(weights_path.c_str(), "r");
+    // Skewer weights
+    FILE *weights_file = fopen(p.pixel_weights_path.c_str(), "r");
     if (weights_file == NULL) {
-        fprintf(stderr, "Could not load file %s.\n", weights_path.c_str());
+        fprintf(stderr, "Could not load file %s.\n", p.pixel_weights_path.c_str());
         exit(1);
     }
-    fread(weights_vec, sizeof(double), num_pixel_elements, weights_file);
+    fread(pixel_weights, sizeof(double), p.num_pixel_elements, weights_file);
     fclose(weights_file);
 
+    //
+    // Loop setup.
+    //
 
-
-    // temporary
-    double *noise_vec = weights_vec;
-    for (int i = 0; i < num_pixel_elements; ++i) {
-        noise_vec[i] = 1.0 / noise_vec[i];
+    // Apply weights to data...
+    for (int64_t i = 0; i < p.num_pixel_elements; ++i) {
+        pixel_data[i] *= pixel_weights[i];
     }
 
-    p.noise = noise_vec;
+    // Setup pixels.
+    p.pixels = new DSPixel[p.num_pixel_elements];
 
-    //
-    // Main loop to compute (S + N)^-1 d
-    //
+    for (i = 0; i < p.num_pixel_elements; ++i) {
+        int isk = i / p.num_pixels;
+        int iz = i % p.num_pixels;
+        p.pixels[i].x = skewer_x[isk];
+        p.pixels[i].y = skewer_y[isk];
+        p.pixels[i].z = p.dz_pix * (iz + 0.5);
+        p.pixels[i].w = pixel_weights[i];
+    }
+
+    delete [] skewer_x;
+    delete [] skewer_y;
+    delete [] pixel_weights;
+
+    // Setup cells.
+    p.map = new DSPoint[p.num_cells];
+
+    for (int ix = 0; ix < p.nx; ++ix) {
+        for (int iy = 0; iy < p.ny; ++iy) {
+            for (int iz = 0; iz < p.nz; ++iz) {
+                int i = (ix * p.ny + iy) * p.nz + iz;
+                p.map[i].x = p.dx * (ix + 0.5);
+                p.map[i].y = p.dy * (iy + 0.5);
+                p.map[i].z = p.dz * (iz + 0.5);
+            }
+        }
+    }
 
     // Create gpt.
-    int gt_n = 40;
-    double gt_dx = 4.0 / gt_n;
+    int gt_n = 50;
+    double gt_dx = 5.0 / gt_n;
     GT *gt = new GT(gt_n, gt_dx);
     p.gt = gt;
 
-    printf("Entering main loop with n_i = %i, n_j = %i.\n",
-        (int)num_cells, (int)num_pixel_elements);
+    // Correct PCG tolerance for the current number of pixels...
+    double res_pcg_tol = p.pcg_tol / p.num_pixel_elements;
 
-    // We store (S + N)^-1 d here...
-    double *b_j = new double[num_pixel_elements];
+    printf("Entering inversion loop, num_pixel_elements = %i.\n",
+        p.num_pixel_elements);
+
+    double *x = new double[p.num_pixel_elements];
+    double *b = pixel_data;
+
+    for (i = 0; i < p.num_pixel_elements; ++i) {
+        x[i] = 0.0;
+    }
 
     // We care about timing starting here.
     Timer *loop_timer = new Timer();
 
-    // Allocate thread local arrays.
-    int n = num_pixel_elements;
-    double *a_jk = new double[n];
-    double *d = new double[n];
-    double *r = new double[n];
-    double *s = new double[n];
-    double *q = new double[n];
-
-    // Set initial a_jk guess.
-    a_jk[0] = 1.0 / sddn_element_func(0, 0);
-    for (int k = 1; k < n; ++k) {
-        a_jk[k] = 0.0;
-    }
-
-    // The main loop over pixels.
-    for (int j = 0; j < n; ++j) {
-
-        // DEBUG
-        printf("pixel %i\n", j);
-
-        // Setup the residual.
-        // r = b - A x
-        int jj = 0, kk = 0;
-        #pragma omp parallel for private(jj, kk)
-        for (jj = 0; jj < n; ++jj) {
-            // Handle b[i]
-            if (jj == j) {
-                r[jj] = 1.0;
-            }
-            else {
-                r[jj] = 0.0;
-            }
-
-            //r[i] -= A(i, j) * x[j];
-            for (kk = 0; kk < n; ++kk) {
-                r[jj] -= sddn_element_func(jj, kk) * a_jk[kk];
-            }
-        }
-
-        // The preconditioning.
-        // For now, we will just try a Jacobian M (A diag).
-        // s = M^-1 r
-        for (jj = 0; jj < n; ++jj) {
-            d[jj] = r[jj] / sddn_element_func(jj, jj);
-        }
-
-        // delta = r^T d
-        double delta_new = 0.0;
-        for (jj = 0; jj < n; ++jj) {
-            delta_new += r[jj] * d[jj];
-        }
-
-        double delta_0 = delta_new;
-
-        // Handle singular case.
-        //if (delta_0 == 0.0) { return; }
-
-        // the iteration count.
-        int iter = 0;
-        // the CG loop...
-        while (iter < p.pcg_max_iter && delta_new > p.pcg_tol * delta_0) {
-            // q = A d
-            #pragma omp parallel for private(jj, kk)
-            for (jj = 0; jj < n; ++jj) {
-                q[jj] = 0.0;
-                for (kk = 0; kk < n; ++kk) {
-                    q[jj] += sddn_element_func(jj, kk) * d[kk];
-                }
-            }
-
-            // alpha = delta_new / (d^T q)
-            double denom = 0.0;
-            for (jj = 0; jj < n; ++jj) {
-                denom += d[jj] * q[jj];
-            }
-            double alpha = delta_new / denom;
-
-            // x = x + alpha d
-            for (jj = 0; jj < n; ++jj) {
-                a_jk[jj] += alpha * d[jj];
-            }
-
-            // Update residual.
-            // Approximate update.
-            // r = r - alpha q
-            for (jj = 0; jj < n; ++jj) {
-                r[jj] -= alpha * q[jj];
-            }
-
-            // reapply preconditioner.
-            for (jj = 0; jj < n; ++jj) {
-                s[jj] = r[jj] / sddn_element_func(jj, jj);
-            }
-
-            // save current delta.
-            double delta_old = delta_new;
-
-            // Update delta.
-            // delta_new = r^T s
-            delta_new = 0.0;
-            for (jj = 0; jj < n; ++jj) {
-                delta_new += r[jj] * s[jj];
-            }
-
-            // Update d.
-            double beta = delta_new / delta_old;
-            for (jj = 0; jj < n; ++jj) {
-                d[jj] = s[jj] + beta * d[jj];
-            }
-
-            // Finally, update the count.
-            ++iter;
-        }
-
-        // Dot with data vector.
-        double b = 0.0;
-        for (int k = 0; k < n; ++k) {
-            b += a_jk[k] * data_vec[k];
-        }
-
-        // Save this pixel result.
-        b_j[j] = b;
-    }
+    pcg(p.num_pixel_elements, &wsppi_lookup, x, b, p.pcg_max_iter, res_pcg_tol);
 
     printf("Main loop time: %g ms.\n", loop_timer->elapsed());
-
-    // don't forget to free the work arrays.
-    delete [] d;
-    delete [] r;
-    delete [] q;
-    delete [] s;
-    delete [] a_jk;
-    delete [] noise_vec;
 
     //
     // Second loop to compute S b
     //
 
     // Allocate map.
-    double *map_vec = new double[num_cells];
-
-    // Zero out map.
-    for (int i = 0; i < num_cells; ++i) {
-        map_vec[i] = 0.0;
-    }
+    double *map = new double[p.num_cells];
 
     // Each thread gets a block of cells.
-    int i, j;
+#if defined(_OPENMP)
     #pragma omp parallel for private(i, j)
-    for (i = 0; i < num_cells; ++i) {
-        for (j = 0; j < num_pixel_elements; ++j) {
-            map_vec[i] += smd_element_func(i, j) * b_j[j];
+#endif
+    for (i = 0; i < p.num_cells; ++i) {
+        map[i] = 0.0;
+        for (j = 0; j < p.num_pixel_elements; ++j) {
+            map[i] += smp_lookup(i, j) * x[j];
         }
     }
 
-    delete [] skewer_x;
-    delete [] skewer_y;
-    delete [] data_vec;
-    delete gt;
-
     // Write map field.
-    printf("Writing map file %s.\n", output_path.c_str());
-    FILE *outfile = fopen(output_path.c_str(), "wb");
-    fwrite(map_vec, sizeof(double), num_cells, outfile);
-    fclose(outfile);
+    printf("Writing map file %s.\n", p.map_path.c_str());
+    FILE *map_file = fopen(p.map_path.c_str(), "w");
+    fwrite(map, sizeof(double), p.num_cells, map_file);
+    fclose(map_file);
 
-    delete [] map_vec;
+    if (p.compute_covar) {
+        puts("Computing covariance diag.");
+        for (int i = 0; i < p.num_cells; ++i) {
+            // Compute x_i = (S +N)^{-1}_{ij} S^{pm}_{j beta}
+            pcg_covar(p.num_pixel_elements, &wsppi_lookup, x, &wspm_lookup, i,
+                p.pcg_max_iter, res_pcg_tol);
+
+            // Next step C_{alpha i}  = S^{mp}_{alpha i} x_i
+            // Store in the map vector.
+            map[i] = 0.0;
+#if defined(_OPENMP)
+            #pragma omp parallel for private(j)
+#endif
+            for (int j = 0; j < p.num_pixel_elements; ++j) {
+                map[i] += smp_lookup(i, j) * x[j];
+            }
+        }
+
+        map_file = fopen("map_covar.bin", "w");
+        fwrite(map, sizeof(double), p.num_cells, map_file);
+        fclose(map_file);
+    }
 
     printf("Total time: %g ms.\n", total_timer->elapsed());
 
