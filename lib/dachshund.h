@@ -7,7 +7,6 @@ Project header.
 #ifndef __DACHSHUND_H__
 #define __DACHSHUND_H__
 
-#include "gt.h"
 #include "lum.h"
 #include "params.h"
 #include "pcg.h"
