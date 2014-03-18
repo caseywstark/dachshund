@@ -46,8 +46,8 @@ main(int argc, char **argv)
 
     double *skewer_x = new double[p.num_skewers];
     double *skewer_y = new double[p.num_skewers];
-    double *pixel_data = new double[p.num_pixel_elements];
-    double *pixel_weights = new double[p.num_pixel_elements];
+    double *pixel_data = new double[p.pix_n];
+    double *pixel_weights = new double[p.pix_n];
 
     puts("Reading skewer files.");
 
@@ -74,7 +74,7 @@ main(int argc, char **argv)
         fprintf(stderr, "Could not load file %s.\n", p.pixel_data_path.c_str());
         exit(1);
     }
-    fread(pixel_data, sizeof(double), p.num_pixel_elements, data_file);
+    fread(pixel_data, sizeof(double), p.pix_n, data_file);
     fclose(data_file);
 
     // Skewer weights
@@ -83,7 +83,7 @@ main(int argc, char **argv)
         fprintf(stderr, "Could not load file %s.\n", p.pixel_weights_path.c_str());
         exit(1);
     }
-    fread(pixel_weights, sizeof(double), p.num_pixel_elements, weights_file);
+    fread(pixel_weights, sizeof(double), p.pix_n, weights_file);
     fclose(weights_file);
 
     //
@@ -91,80 +91,60 @@ main(int argc, char **argv)
     //
 
     // Apply weights to data...
-    for (int64_t i = 0; i < p.num_pixel_elements; ++i) {
+    for (i = 0; i < p.pix_n; ++i) {
         pixel_data[i] *= pixel_weights[i];
     }
 
     // Setup pixels.
-    p.pixels = new DSPixel[p.num_pixel_elements];
-
-    for (i = 0; i < p.num_pixel_elements; ++i) {
-        int isk = i / p.num_pixels;
-        int iz = i % p.num_pixels;
-        p.pixels[i].x = skewer_x[isk];
-        p.pixels[i].y = skewer_y[isk];
-        p.pixels[i].z = p.dz_pix * (iz + 0.5);
-        p.pixels[i].w = pixel_weights[i];
-    }
+    ds_lum_pixels_init(p.num_skewers, skewer_x, skewer_y, p.num_pixels,
+        p.pix_dz, pixel_weights);
+    ds_lum_map_coords_init(p.map_nx, p.map_ny, p.map_nz, p.map_dx, p.map_dy,
+        p.map_dz);
 
     delete [] skewer_x;
     delete [] skewer_y;
     delete [] pixel_weights;
 
-    // Setup cells.
-    p.map = new DSPoint[p.num_cells];
-
-    for (int ix = 0; ix < p.nx; ++ix) {
-        for (int iy = 0; iy < p.ny; ++iy) {
-            for (int iz = 0; iz < p.nz; ++iz) {
-                int i = (ix * p.ny + iy) * p.nz + iz;
-                p.map[i].x = p.dx * (ix + 0.5);
-                p.map[i].y = p.dy * (iy + 0.5);
-                p.map[i].z = p.dz * (iz + 0.5);
-            }
-        }
-    }
-
-    // Create gpt.
     int gt_n = 50;
-    double gt_dx = 5.0 / gt_n;
-    GT *gt = new GT(gt_n, gt_dx);
-    p.gt = gt;
+    double gt_dx = 2.0 / gt_n;
+    ds_lum_gt_init(gt_n, gt_dx);
 
-    // Correct PCG tolerance for the current number of pixels...
-    double res_pcg_tol = p.pcg_tol / p.num_pixel_elements;
+    //
+    // PCG step
+    //
 
-    printf("Entering inversion loop, num_pixel_elements = %i.\n",
-        p.num_pixel_elements);
+    printf("PCG with pix_n = %i.\n", p.pix_n);
 
-    double *x = new double[p.num_pixel_elements];
+    double *x = new double[p.pix_n];
     double *b = pixel_data;
 
-    for (i = 0; i < p.num_pixel_elements; ++i) {
+    for (i = 0; i < p.pix_n; ++i) {
         x[i] = 0.0;
     }
 
     // We care about timing starting here.
-    Timer *loop_timer = new Timer();
+    Timer *pcg_timer = new Timer();
 
-    pcg(p.num_pixel_elements, &wsppi_lookup, x, b, p.pcg_max_iter, res_pcg_tol);
+    pcg(p.pix_n, &wsppi_lookup, x, b, p.pcg_max_iter, p.pcg_tol, true);
 
-    printf("Main loop time: %g ms.\n", loop_timer->elapsed());
+    printf("PCG time: %g ms.\n", pcg_timer->elapsed());
 
     //
-    // Second loop to compute S b
+    // Matrix multiply for map.
     //
 
     // Allocate map.
-    double *map = new double[p.num_cells];
+    double *map = new double[p.map_n];
+
+    printf("Multiply for map_n = %i, total n = %.2e.\n", p.map_n, (double)p.map_n * p.pix_n);
 
     // Each thread gets a block of cells.
 #if defined(_OPENMP)
     #pragma omp parallel for private(i, j)
 #endif
-    for (i = 0; i < p.num_cells; ++i) {
+    for (i = 0; i < p.map_n; ++i) {
         map[i] = 0.0;
-        for (j = 0; j < p.num_pixel_elements; ++j) {
+        for (j = 0; j < p.pix_n; ++j) {
             map[i] += smp_lookup(i, j) * x[j];
         }
     }
@@ -172,15 +152,16 @@ main(int argc, char **argv)
     // Write map field.
     printf("Writing map file %s.\n", p.map_path.c_str());
     FILE *map_file = fopen(p.map_path.c_str(), "w");
-    fwrite(map, sizeof(double), p.num_cells, map_file);
+    fwrite(map, sizeof(double), p.map_n, map_file);
     fclose(map_file);
 
-    if (p.compute_covar) {
+    if (p.option_compute_covar) {
         puts("Computing covariance diag.");
-        for (int i = 0; i < p.num_cells; ++i) {
+        for (int i = 0; i < p.map_n; ++i) {
+            printf("cell %i.", i);
             // Compute x_i = (S +N)^{-1}_{ij} S^{pm}_{j beta}
-            pcg_covar(p.num_pixel_elements, &wsppi_lookup, x, &wspm_lookup, i,
-                p.pcg_max_iter, res_pcg_tol);
+            pcg_covar(p.pix_n, &wsppi_lookup, x, &wspm_lookup, i,
+                p.pcg_max_iter, p.pcg_tol, false);
 
             // Next step C_{alpha i}  = S^{mp}_{alpha i} x_i
             // Store in the map vector.
@@ -188,13 +169,13 @@ main(int argc, char **argv)
 #if defined(_OPENMP)
             #pragma omp parallel for private(j)
 #endif
-            for (int j = 0; j < p.num_pixel_elements; ++j) {
+            for (int j = 0; j < p.pix_n; ++j) {
                 map[i] += smp_lookup(i, j) * x[j];
             }
         }
 
         map_file = fopen("map_covar.bin", "w");
-        fwrite(map, sizeof(double), p.num_cells, map_file);
+        fwrite(map, sizeof(double), p.map_n, map_file);
         fclose(map_file);
     }
 
