@@ -19,6 +19,34 @@ print_usage()
     puts("    input     path to config file.");
 }
 
+void
+read_data(double * const skewer_x, double * const skewer_y,
+    double * const pixel_data, double * const pixel_weights)
+{
+    FILE *skewer_file = fopen(p.skewer_x_path.c_str(), "r");
+    check(skewer_file, "Could not open file %s.", p.skewer_x_path.c_str());
+    fread(skewer_x, sizeof(double), p.num_skewers, skewer_file);
+    fclose(skewer_file);
+
+    skewer_file = fopen(p.skewer_y_path.c_str(), "r");
+    check(skewer_file, "Could not open file %s.", p.skewer_y_path.c_str());
+    fread(skewer_y, sizeof(double), p.num_skewers, skewer_file);
+    fclose(skewer_file);
+
+    FILE *data_file = fopen(p.pixel_data_path.c_str(), "r");
+    check(data_file, "Could not open file %s.", p.pixel_data_path.c_str());
+    fread(pixel_data, sizeof(double), p.pix_n, data_file);
+    fclose(data_file);
+
+    FILE *weights_file = fopen(p.pixel_weights_path.c_str(), "r");
+    check(weights_file, "Could not open file %s.", p.pixel_weights_path.c_str());
+    fread(pixel_weights, sizeof(double), p.pix_n, weights_file);
+    fclose(weights_file);
+
+error:
+    return -1;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -50,41 +78,7 @@ main(int argc, char **argv)
     double *pixel_weights = new double[p.pix_n];
 
     puts("Reading skewer files.");
-
-    // Skewer positions
-    FILE *skewer_file = fopen(p.skewer_x_path.c_str(), "r");
-    if (skewer_file == NULL) {
-        fprintf(stderr, "Could not load file %s.\n", p.skewer_x_path.c_str());
-        exit(1);
-    }
-    fread(skewer_x, sizeof(double), p.num_skewers, skewer_file);
-    fclose(skewer_file);
-
-    skewer_file = fopen(p.skewer_y_path.c_str(), "r");
-    if (skewer_file == NULL) {
-        fprintf(stderr, "Could not load file %s.\n", p.skewer_y_path.c_str());
-        exit(1);
-    }
-    fread(skewer_y, sizeof(double), p.num_skewers, skewer_file);
-    fclose(skewer_file);
-
-    // Skewer fluxes
-    FILE *data_file = fopen(p.pixel_data_path.c_str(), "r");
-    if (data_file == NULL) {
-        fprintf(stderr, "Could not load file %s.\n", p.pixel_data_path.c_str());
-        exit(1);
-    }
-    fread(pixel_data, sizeof(double), p.pix_n, data_file);
-    fclose(data_file);
-
-    // Skewer weights
-    FILE *weights_file = fopen(p.pixel_weights_path.c_str(), "r");
-    if (weights_file == NULL) {
-        fprintf(stderr, "Could not load file %s.\n", p.pixel_weights_path.c_str());
-        exit(1);
-    }
-    fread(pixel_weights, sizeof(double), p.pix_n, weights_file);
-    fclose(weights_file);
+    read_data(skewer_x, skewer_y, pixel_data, pixel_weights);
 
     //
     // Loop setup.
