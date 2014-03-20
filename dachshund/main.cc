@@ -96,18 +96,11 @@ main(int argc, char **argv)
     }
 
     // Setup pixels.
-    ds_lum_pixels_init(p.num_skewers, skewer_x, skewer_y, p.num_pixels,
-        p.pix_dz, pixel_weights);
-    ds_lum_map_coords_init(p.map_nx, p.map_ny, p.map_nz, p.map_dx, p.map_dy,
-        p.map_dz);
+    ds_lum_init(skewer_x, skewer_y, pixel_weights);
 
     delete [] skewer_x;
     delete [] skewer_y;
     delete [] pixel_weights;
-
-    int gt_n = 50;
-    double gt_dx = 2.0 / gt_n;
-    ds_lum_gt_init(gt_n, gt_dx);
 
     //
     // PCG step
@@ -125,7 +118,7 @@ main(int argc, char **argv)
     // We care about timing starting here.
     Timer *pcg_timer = new Timer();
 
-    pcg(p.pix_n, &wsppi_lookup, x, b, p.pcg_max_iter, p.pcg_tol, true);
+    pcg_wsppi(p.pix_n, x, b, p.pcg_max_iter, p.pcg_tol, true);
 
     printf("PCG time: %g ms.\n", pcg_timer->elapsed());
 
@@ -138,14 +131,32 @@ main(int argc, char **argv)
 
     printf("Multiply for map_n = %i, total n = %.2e.\n", p.map_n, (double)p.map_n * p.pix_n);
 
+    // m = S^mp x
     // Each thread gets a block of cells.
 #if defined(_OPENMP)
     #pragma omp parallel for private(i, j)
 #endif
     for (i = 0; i < p.map_n; ++i) {
         map[i] = 0.0;
+        double xi = map_coords[i].x;
+        double yi = map_coords[i].y;
+        double zi = map_coords[i].z;
         for (j = 0; j < p.pix_n; ++j) {
-            map[i] += smp_lookup(i, j) * x[j];
+            // Separation vector components.
+            double dx = xi - pixels[j].x;
+            double dy = yi - pixels[j].y;
+            double dz = zi - pixels[j].z;
+
+            // The gaussian terms.
+            double x_perp_2 = (dx*dx + dy*dy) / p.corr_l_perp_2;
+            double x_para_2 = dz*dz / p.corr_l_para_2;
+
+            // S = sigma^2 exp(...) exp(...)
+            double g_perp = ds_linterp(x_perp_2, gt.n, gt.dx, gt.table);
+            double g_para = ds_linterp(x_para_2, gt.n, gt.dx, gt.table);
+            double smp_ij = p.corr_var_s * g_perp * g_para;
+
+            map[i] += smp_ij * x[j];
         }
     }
 
@@ -158,19 +169,33 @@ main(int argc, char **argv)
     if (p.option_compute_covar) {
         puts("Computing covariance diag.");
         for (int i = 0; i < p.map_n; ++i) {
-            printf("cell %i.", i);
+            printf("cell %i -- %f.\n", i, (double)i/p.map_n);
             // Compute x_i = (S +N)^{-1}_{ij} S^{pm}_{j beta}
-            pcg_covar(p.pix_n, &wsppi_lookup, x, &wspm_lookup, i,
-                p.pcg_max_iter, p.pcg_tol, false);
+            pcg_wsppi_spm(p.pix_n, i, x, p.pcg_max_iter, p.pcg_tol, true);
 
             // Next step C_{alpha i}  = S^{mp}_{alpha i} x_i
             // Store in the map vector.
             map[i] = 0.0;
-#if defined(_OPENMP)
-            #pragma omp parallel for private(j)
-#endif
-            for (int j = 0; j < p.pix_n; ++j) {
-                map[i] += smp_lookup(i, j) * x[j];
+
+            double xi = map_coords[i].x;
+            double yi = map_coords[i].y;
+            double zi = map_coords[i].z;
+            for (j = 0; j < p.pix_n; ++j) {
+                // Separation vector components.
+                double dx = xi - pixels[j].x;
+                double dy = yi - pixels[j].y;
+                double dz = zi - pixels[j].z;
+
+                // The gaussian terms.
+                double x_perp_2 = (dx*dx + dy*dy) / p.corr_l_perp_2;
+                double x_para_2 = dz*dz / p.corr_l_para_2;
+
+                // S = sigma^2 exp(...) exp(...)
+                double g_perp = ds_linterp(x_perp_2, gt.n, gt.dx, gt.table);
+                double g_para = ds_linterp(x_para_2, gt.n, gt.dx, gt.table);
+                double smp_ij = p.corr_var_s * g_perp * g_para;
+
+                map[i] += smp_ij * x[j];
             }
         }
 
