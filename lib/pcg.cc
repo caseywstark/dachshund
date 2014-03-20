@@ -13,6 +13,32 @@ DSFuncTable gt;
 DSPixel *pixels;
 DSPoint *map_coords;
 
+/*
+Linear interpolation, given x and table data.
+
+We assume x >= 0. If x is larger than the last tabulated point, we return 0.
+
+Parameters
+x : the eval point
+nx : the number of samples
+dx: the sample point separation
+f_table : array containing the function value at sample points.
+*/
+static inline double
+ds_linterp(const double x, const int nx, const double dx,
+    const double * const f_table)
+{
+    // in index space.
+    double xx = x / dx;
+    // decimate to get low edge.
+    int ix = xx;
+    // Check if we are outside table range.
+    if (ix > nx - 2) {
+        return 0.0;
+    }
+    // the linterp expression.
+    return f_table[ix] * (ix + 1 - xx) + f_table[ix+1] * (xx - ix);
+}
 
 void
 ds_gt_init(const int n, const double dx)
@@ -109,31 +135,43 @@ ds_wsppi_residual(const int n, const double * const x,
     const double * const b, double * const r)
 {
     int i, j;
+
+    // Make local copies of global vars for access performance.
+    const double var_s = p.corr_var_s;
+    const double l_perp_2 = p.corr_l_perp_2;
+    const double l_para_2 = p.corr_l_para_2;
+
+    const int gt_n = gt.n;
+    const double gt_dx = gt.dx;
+    const double * const gt_table = gt.table;
+
+    const DSPixel * const l_pixels = pixels;
+
 #if defined(_OPENMP)
     #pragma omp parallel for private(i, j)
 #endif
     for (i = 0; i < n; ++i) {
         double Ax_i = 0.0;
 
-        double xi = pixels[i].x;
-        double yi = pixels[i].y;
-        double zi = pixels[i].z;
-        double one_minus_wi = 1.0 - pixels[i].w;
+        double xi = l_pixels[i].x;
+        double yi = l_pixels[i].y;
+        double zi = l_pixels[i].z;
+        double one_minus_wi = 1.0 - l_pixels[i].w;
 
         for (j = 0; j < n; ++j) {
             // Separation vector components.
-            double dx = xi - pixels[j].x;
-            double dy = yi - pixels[j].y;
-            double dz = zi - pixels[j].z;
+            double dx = xi - l_pixels[j].x;
+            double dy = yi - l_pixels[j].y;
+            double dz = zi - l_pixels[j].z;
 
             // The gaussian terms.
-            double x_perp_2 = (dx*dx + dy*dy) / p.corr_l_perp_2;
-            double x_para_2 = dz*dz / p.corr_l_para_2;
+            double x_perp_2 = (dx*dx + dy*dy) / l_perp_2;
+            double x_para_2 = dz*dz / l_para_2;
 
             // S = sigma^2 exp(...) exp(...)
-            double g_perp = ds_linterp(x_perp_2, gt.n, gt.dx, gt.table);
-            double g_para = ds_linterp(x_para_2, gt.n, gt.dx, gt.table);
-            double wsppi_ij = p.corr_var_s * g_perp * g_para;
+            double g_perp = ds_linterp(x_perp_2, gt_n, gt_dx, gt_table);
+            double g_para = ds_linterp(x_para_2, gt_n, gt_dx, gt_table);
+            double wsppi_ij = var_s * g_perp * g_para;
 
             // nice trick to avoid branching.
             int delta_ij = (i == j);
@@ -150,24 +188,36 @@ void
 ds_wsppi_q(const int n, const double * const d, double * const q)
 {
     int i, j;
+
+    // Make local copies of global vars for access performance.
+    const double var_s = p.corr_var_s;
+    const double l_perp_2 = p.corr_l_perp_2;
+    const double l_para_2 = p.corr_l_para_2;
+
+    const int gt_n = gt.n;
+    const double gt_dx = gt.dx;
+    const double * const gt_table = gt.table;
+
+    const DSPixel * const l_pixels = pixels;
+
 #if defined(_OPENMP)
     #pragma omp parallel for private(i, j)
 #endif
     for (i = 0; i < n; ++i) {
         q[i] = 0.0;
-        double xi = pixels[i].x;
-        double yi = pixels[i].y;
-        double zi = pixels[i].z;
-        double one_minus_wi = 1.0 - pixels[i].w;
+        double xi = l_pixels[i].x;
+        double yi = l_pixels[i].y;
+        double zi = l_pixels[i].z;
+        double one_minus_wi = 1.0 - l_pixels[i].w;
         for (j = 0; j < n; ++j) {
-            double dx = xi - pixels[j].x;
-            double dy = yi - pixels[j].y;
-            double dz = zi - pixels[j].z;
-            double x_perp_2 = (dx*dx + dy*dy) / p.corr_l_perp_2;
-            double x_para_2 = dz*dz / p.corr_l_para_2;
-            double g_perp = ds_linterp(x_perp_2, gt.n, gt.dx, gt.table);
-            double g_para = ds_linterp(x_para_2, gt.n, gt.dx, gt.table);
-            double wsppi_ij = p.corr_var_s * g_perp * g_para;
+            double dx = xi - l_pixels[j].x;
+            double dy = yi - l_pixels[j].y;
+            double dz = zi - l_pixels[j].z;
+            double x_perp_2 = (dx*dx + dy*dy) / l_perp_2;
+            double x_para_2 = dz*dz / l_para_2;
+            double g_perp = ds_linterp(x_perp_2, gt_n, gt_dx, gt_table);
+            double g_para = ds_linterp(x_para_2, gt_n, gt_dx, gt_table);
+            double wsppi_ij = var_s * g_perp * g_para;
             int delta_ij = (i == j);
             wsppi_ij = wsppi_ij + (1.0 - one_minus_wi * wsppi_ij) * delta_ij;
             q[i] += wsppi_ij * d[j];
@@ -290,6 +340,48 @@ pcg_wsppi(const int n, double * const x, const double * const b,
     delete [] r;
     delete [] q;
     delete [] s;
+}
+
+
+void
+ds_smp_x(const double * const x, double * const m)
+{
+    const DSPoint * const l_mc = map_coords;
+    const DSPixel * const l_pixels = pixels;
+
+    const double var_s = p.corr_var_s;
+    const double l_para_2 = p.corr_l_para_2;
+    const double l_perp_2 = p.corr_l_perp_2;
+
+    const int gt_n = gt.n;
+    const double gt_dx = gt.dx;
+    const double * const gt_table = gt.table;
+
+    const int map_n = p.map_n;
+    const int pix_n = p.pix_n;
+    int i, j;
+
+#if defined(_OPENMP)
+    #pragma omp parallel for private(i, j)
+#endif
+    for (i = 0; i < map_n; ++i) {
+        m[i] = 0.0;
+        double xi = l_mc[i].x;
+        double yi = l_mc[i].y;
+        double zi = l_mc[i].z;
+        for (j = 0; j < pix_n; ++j) {
+            double dx = xi - l_pixels[j].x;
+            double dy = yi - l_pixels[j].y;
+            double dz = zi - l_pixels[j].z;
+            double x_perp_2 = (dx*dx + dy*dy) / l_perp_2;
+            double x_para_2 = dz*dz / l_para_2;
+            double g_perp = ds_linterp(x_perp_2, gt_n, gt_dx, gt_table);
+            double g_para = ds_linterp(x_para_2, gt_n, gt_dx, gt_table);
+            double smp_ij = var_s * g_perp * g_para;
+
+            m[i] += smp_ij * x[j];
+        }
+    }
 }
 
 void

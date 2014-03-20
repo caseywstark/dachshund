@@ -22,7 +22,7 @@ print_usage()
 int
 main(int argc, char **argv)
 {
-    int i, j;
+    int i;
     Timer *total_timer = new Timer();
 
     // Fancy command line parsing.
@@ -133,39 +133,14 @@ main(int argc, char **argv)
 
     // m = S^mp x
     // Each thread gets a block of cells.
-#if defined(_OPENMP)
-    #pragma omp parallel for private(i, j)
-#endif
-    for (i = 0; i < p.map_n; ++i) {
-        map[i] = 0.0;
-        double xi = map_coords[i].x;
-        double yi = map_coords[i].y;
-        double zi = map_coords[i].z;
-        for (j = 0; j < p.pix_n; ++j) {
-            // Separation vector components.
-            double dx = xi - pixels[j].x;
-            double dy = yi - pixels[j].y;
-            double dz = zi - pixels[j].z;
-
-            // The gaussian terms.
-            double x_perp_2 = (dx*dx + dy*dy) / p.corr_l_perp_2;
-            double x_para_2 = dz*dz / p.corr_l_para_2;
-
-            // S = sigma^2 exp(...) exp(...)
-            double g_perp = ds_linterp(x_perp_2, gt.n, gt.dx, gt.table);
-            double g_para = ds_linterp(x_para_2, gt.n, gt.dx, gt.table);
-            double smp_ij = p.corr_var_s * g_perp * g_para;
-
-            map[i] += smp_ij * x[j];
-        }
-    }
+    ds_smp_x(x, map);
 
     // Write map field.
     printf("Writing map file %s.\n", p.map_path.c_str());
     FILE *map_file = fopen(p.map_path.c_str(), "w");
     fwrite(map, sizeof(double), p.map_n, map_file);
     fclose(map_file);
-
+/*
     if (p.option_compute_covar) {
         puts("Computing covariance diag.");
         for (int i = 0; i < p.map_n; ++i) {
@@ -203,6 +178,7 @@ main(int argc, char **argv)
         fwrite(map, sizeof(double), p.map_n, map_file);
         fclose(map_file);
     }
+    */
 
     printf("Total time: %g ms.\n", total_timer->elapsed());
 
