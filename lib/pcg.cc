@@ -137,7 +137,7 @@ ds_wsppi_residual(const int n, const double * const x,
 
             // nice trick to avoid branching.
             int delta_ij = (i == j);
-            wsppi_ij = wsppi_ij * (1.0 - one_minus_wi * delta_ij) + delta_ij;
+            wsppi_ij = wsppi_ij + (1.0 - one_minus_wi * wsppi_ij) * delta_ij;
 
             // Update sum.
             Ax_i += wsppi_ij * x[j];
@@ -169,7 +169,7 @@ ds_wsppi_q(const int n, const double * const d, double * const q)
             double g_para = ds_linterp(x_para_2, gt.n, gt.dx, gt.table);
             double wsppi_ij = p.corr_var_s * g_perp * g_para;
             int delta_ij = (i == j);
-            wsppi_ij = wsppi_ij * (1.0 - one_minus_wi * delta_ij) + delta_ij;
+            wsppi_ij = wsppi_ij + (1.0 - one_minus_wi * wsppi_ij) * delta_ij;
             q[i] += wsppi_ij * d[j];
         }
     }
@@ -320,7 +320,7 @@ ds_wsppi_spm_residual(const int n, const int k, const double * const x,
             double g_para = ds_linterp(x_para_2, gt.n, gt.dx, gt.table);
             double wsppi_ij = p.corr_var_s * g_perp * g_para;
             int delta_ij = (i == j);
-            wsppi_ij = wsppi_ij * (1.0 - one_minus_wi * delta_ij) + delta_ij;
+            wsppi_ij = wsppi_ij + (1.0 - one_minus_wi * wsppi_ij) * delta_ij;
             Ax_i += wsppi_ij * x[j];
         }
         double dx = xi - xk;
@@ -359,7 +359,7 @@ ds_wsppi_spm_q(const int n, const double * const d, double * const q)
             double g_para = ds_linterp(x_para_2, gt.n, gt.dx, gt.table);
             double wsppi_ij = p.corr_var_s * g_perp * g_para;
             int delta_ij = (i == j);
-            wsppi_ij = wsppi_ij * (1.0 - one_minus_wi * delta_ij) + delta_ij;
+            wsppi_ij = wsppi_ij + (1.0 - one_minus_wi * wsppi_ij) * delta_ij;
             q[i] += wsppi_ij * d[j];
         }
     }
