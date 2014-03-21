@@ -1,10 +1,8 @@
-import subprocess
 import h5py
 import numpy as np
-from scipy.signal import decimate
 
 #snap_path = "l10_n128/z25.h5"
-snap_path = "/Users/caseywstark/remote/alcc/Analysis/convergence/runs/l10_n128/z25.h5"
+snap_path = "/project/projectdirs/m1796/Analysis/convergence/runs/l40_n2048/z25.h5"
 f = h5py.File(snap_path, "r")
 
 # sim params...
@@ -13,54 +11,50 @@ N = f["domain"].attrs["shape"][0]
 dx = L / N
 dy = dx
 
-# skewer params
-num_skewer_1d = 4
-skewer_step = N / num_skewer_1d
-skewer_indexes = np.arange(skewer_step / 2, N, skewer_step)
-skewer_downsample = 4
-
-print "Reading tau dataset."
-
 tau_ds = f["derived_fields/tau_red"]
-tau = tau_ds.value.astype(np.float64)
-f = np.exp(-tau)
-mean_flux = f.mean()
+
+# skewer params
+num_skewers = 128
+num_pixels = 64
+skewer_coords = np.random.randint(N, size=(num_skewers, 2))
+
+dz = L / N
+dz_pix = L / num_pixels
+sigma_z = dz_pix / 2
+z_cell = np.linspace(dz/2, L-dz/2, num=N)
 
 print "Making skewers."
 skewer_x = []
 skewer_y = []
-delta_f = []
-for ix in skewer_indexes:
-    for iy in skewer_indexes:
-        tau = tau_ds[ix, iy].astype(np.float64)
-        tau = decimate(tau, skewer_downsample)
+data = []
+for ix, iy in skewer_coords:
+    print ix, iy
 
-        f = np.exp(-tau)
-        df = f / mean_flux - 1.0
+    skewer_x.append(dx * (ix + 0.5))
+    skewer_y.append(dy * (iy + 0.5))
 
-        skewer_x.append(dx * (ix + 0.5))
-        skewer_y.append(dy * (iy + 0.5))
-        delta_f.append(df)
+    tau = tau_ds[ix, iy].astype(np.float64)
+    flux = np.exp(-tau)
+
+    for ipix in xrange(num_pixels):
+        z = dz_pix * (ipix + 0.5)
+        z_sep = z - z_cell
+        w = np.exp(-(z_sep/sigma_z)**2)
+        # w.sum should be 1, but why not
+        fw = (w * flux).sum() / w.sum()
+        data.append(fw)
 
 # array cast's
 skewer_x = np.array(skewer_x)
 skewer_y = np.array(skewer_y)
-delta_f = np.array(delta_f)
-noise = 0.05 * np.ones(delta_f.shape)
+data = np.array(data)
 
-print "Writing skewer file."
+# random weights
+weights = 0.2 + 0.8 * np.random.random(data.shape)
 
-# write out individual files because python's binary writing is terrible.
-skewer_x.tofile("skewer_x")
-skewer_y.tofile("skewer_y")
-delta_f.tofile("delta_f")
-noise.tofile("noise")
+print "Writing input files."
+skewer_x.tofile("skewer_x.bin")
+skewer_y.tofile("skewer_y.bin")
+data.tofile("pixel_data.bin")
+weights.tofile("pixel_weights.bin")
 
-# cat files together
-# grumble grumble subprocess
-c = "cat skewer_x skewer_y delta_f noise > skewers.bin"
-process = subprocess.call(c, shell=True)
-
-# clean up after one's self...
-c = "rm skewer_x skewer_y delta_f noise"
-process = subprocess.call(c, shell=True)
