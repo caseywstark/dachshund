@@ -41,7 +41,8 @@ ds_params_init(const std::string config_path)
     p.pcg_max_iter = 1;
     p.pcg_tol = 1.0;
 
-    p.option_compute_covar = 0;
+    p.option_noise_covar = 1;
+    p.option_map_covar = 0;
     p.option_smooth_map = 0;
 
     p.skewer_x_path = "skewer_x.bin";
@@ -123,8 +124,11 @@ ds_params_init(const std::string config_path)
         else if (strcmp(key, "pcg_max_iter") == 0) {
             p.pcg_max_iter = atoi(value);
         }
-        else if (strcmp(key, "option_compute_covar") == 0) {
-            p.option_compute_covar = atoi(value);
+        else if (strcmp(key, "option_noise_covar") == 0) {
+            p.option_noise_covar = atoi(value);
+        }
+        else if (strcmp(key, "option_map_covar") == 0) {
+            p.option_map_covar = atoi(value);
         }
         else if (strcmp(key, "option_smooth_map") == 0) {
             p.option_smooth_map = atoi(value);

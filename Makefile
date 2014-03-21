@@ -1,6 +1,3 @@
-# The main targets are dachshund.ex and test
-#
-
 # The platform file must define the following:
 # CXX : the C++ compiler
 # CPPFLAGS : the preprocessor flags
@@ -8,30 +5,24 @@
 # LDFLAGS : the link flags
 include platform.make
 
-LIB_SRCS = $(wildcard lib/*.cc)
-LIB_OBJS = $(patsubst lib/%.cc, lib/%.o, $(LIB_SRCS))
-MAIN_OBJS = dachshund/main.o
-TARGET = dachshund.ex
+SOURCES=$(wildcard src/*.cc)
+OBJECTS=$(patsubst %.cc,%.o,$(SOURCES))
+TARGET=dachshund.ex
 
-TEST_SRCS = $(wildcard test/*.cc)
-TEST_OBJS = $(patsubst test/%.cc, test/%.o, $(TEST_SRCS))
-TEST_TARGET = test_dachshund.ex
+TEST_SRC=$(wildcard tests/*_tests.cc)
+TESTS=$(patsubst %.cc,%,$(TEST_SRC))
 
 # Targets
 all: $(TARGET)
 
-$(TARGET): $(LIB_OBJS) $(MAIN_OBJS)
-	$(CXX) $(LDFLAGS) $^ $(LIBS) -o $@
+$(TARGET): $(OBJECTS)
+	$(CXX) $(LDFLAGS) $(OBJECTS) $(LIBS) -o $@
 
-$(TEST_TARGET): $(LIB_OBJS) $(TEST_OBJS)
-	$(CXX) $(LDFLAGS) $^ $(LIBS) -o $@
+.PHONY: tests
+tests: $(OBJECTS) $(TESTS)
+	sh ./tests/runtests.sh
 
-%.o: %.cc
-	$(CXX) $(DEFINES) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
-
-test: $(TEST_TARGET)
-	./$(TEST_TARGET)
-
-.PHONEY: clean
+.PHONY: clean
 clean:
-	-rm -f $(TARGET) $(TEST_TARGET) $(TEST_OBJS) $(MAIN_OBJS) $(LIB_OBJS)
+	rm -rf $(OBJECTS) $(TESTS)
+	rm -f tests/tests.log

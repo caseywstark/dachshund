@@ -32,7 +32,8 @@ struct ds_params_s {
     double pcg_tol;
 
     // options
-    int option_compute_covar;
+    int option_map_covar;
+    int option_noise_covar;
     int option_smooth_map;
 
     // paths
