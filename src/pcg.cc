@@ -86,7 +86,7 @@ ds_pixels_free()
 
 void
 ds_map_coords_init(const int map_nx, const int map_ny, const int map_nz,
-    const int map_dx, const int map_dy, const int map_dz)
+    const double map_dx, const double map_dy, const double map_dz)
 {
     int map_n = map_nx * map_ny * map_nz;
     map_coords = new DSPoint[map_n];
