@@ -11,6 +11,7 @@ TARGET=dachshund.ex
 
 TEST_SRC=$(wildcard tests/*_tests.cc)
 TESTS=$(patsubst %.cc,%,$(TEST_SRC))
+TEST_TARGET = tests/run_tests.ex
 
 # Targets
 all: $(TARGET)
