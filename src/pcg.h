@@ -6,8 +6,8 @@
 #define __DS_PCG_H__
 
 void
-ds_lum_init(const double * const skewer_x, const double * const skewer_y,
-    const double * const pixel_weights);
+ds_lum_init(const double * const pixel_x, const double * const pixel_y,
+    const double * const pixel_z,  const double * const pixel_w);
 
 void
 ds_lum_free();

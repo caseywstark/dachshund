@@ -12,10 +12,7 @@ struct ds_params_s {
     double lx, ly, lz;
 
     // skewers
-    int num_skewers;
     int num_pixels;
-    int pix_n;
-    double pix_dz;
 
     // map
     int map_nx, map_ny, map_nz;
@@ -37,8 +34,9 @@ struct ds_params_s {
     int option_smooth_map;
 
     // paths
-    std::string skewer_x_path;
-    std::string skewer_y_path;
+    std::string pixel_x_path;
+    std::string pixel_y_path;
+    std::string pixel_z_path;
     std::string pixel_data_path;
     std::string pixel_weights_path;
     std::string map_path;

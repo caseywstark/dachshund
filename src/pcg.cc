@@ -60,21 +60,17 @@ ds_gt_free()
 }
 
 void
-ds_pixels_init(const int num_skewers,
-    const double * const skewer_x, const double * const skewer_y,
-    const int num_pixels, const double pix_dz,
-    const double * const pixel_weights)
+ds_pixels_init(const double * const pixel_x, const double * const pixel_y,
+    const double * const pixel_z, const double * const pixel_w)
 {
-    int pix_n = num_skewers * num_pixels;
+    const int pix_n = p.num_pixels;
     pixels = new DSPixel[pix_n];
 
     for (int i = 0; i < pix_n; ++i) {
-        int isk = i / num_pixels;
-        int iz = i % num_pixels;
-        pixels[i].x = skewer_x[isk];
-        pixels[i].y = skewer_y[isk];
-        pixels[i].z = pix_dz * (iz + 0.5);
-        pixels[i].w = pixel_weights[i];
+        pixels[i].x = pixel_x[i];
+        pixels[i].y = pixel_y[i];
+        pixels[i].z = pixel_z[i];
+        pixels[i].w = pixel_w[i];
     }
 }
 
@@ -110,11 +106,10 @@ ds_map_coords_free()
 }
 
 void
-ds_lum_init(const double * const skewer_x, const double * const skewer_y,
-    const double * const pixel_weights)
+ds_lum_init(const double * const pixel_x, const double * const pixel_y,
+    const double * const pixel_z,  const double * const pixel_w)
 {
-    ds_pixels_init(p.num_skewers, skewer_x, skewer_y, p.num_pixels,
-        p.pix_dz, pixel_weights);
+    ds_pixels_init(pixel_x, pixel_y, pixel_z, pixel_w);
     ds_map_coords_init(p.map_nx, p.map_ny, p.map_nz, p.map_dx, p.map_dy,
         p.map_dz);
 
@@ -167,7 +162,7 @@ ds_wsppi_residual(const double * const x, const double * const b,
     double * const r)
 {
     // Make local copies of global vars for access performance.
-    const int n = p.pix_n;
+    const int n = p.num_pixels;
     const double var_s = p.corr_var_s;
     const double l_perp_2 = p.corr_l_perp_2;
     const double l_para_2 = p.corr_l_para_2;
@@ -218,7 +213,7 @@ void
 ds_wsppi_q(const double * const d, double * const q)
 {
     // Make local copies of global vars for access performance.
-    const int n = p.pix_n;
+    const int n = p.num_pixels;
     const double var_s = p.corr_var_s;
     const double l_perp_2 = p.corr_l_perp_2;
     const double l_para_2 = p.corr_l_para_2;
@@ -257,7 +252,7 @@ void
 pcg_wsppi_b(const double * const b, double * const x)
 {
     int i;
-    const int n = p.pix_n;
+    const int n = p.num_pixels;
     const int max_iter = p.pcg_max_iter;
     const double tol = p.pcg_tol;
 
@@ -385,7 +380,7 @@ ds_smp_x(const double * const x, double * const m)
     const double * const gt_table = gt.table;
 
     const int map_n = p.map_n;
-    const int pix_n = p.pix_n;
+    const int pix_n = p.num_pixels;
     int i, j;
 
 #if defined(_OPENMP)
@@ -413,7 +408,7 @@ ds_smp_x(const double * const x, double * const m)
 void
 ds_compute_map(const double * const d, double * const m)
 {
-    const int pix_n = p.pix_n;
+    const int pix_n = p.num_pixels;
     const int map_n = p.map_n;
 
     // Where we will store the pcg solution...
@@ -452,7 +447,7 @@ void
 ds_smp_w_spm(double * const m)
 {
     const int map_n = p.map_n;
-    const int pix_n = p.pix_n;
+    const int pix_n = p.num_pixels;
     const double var_s = p.corr_var_s;
     const double l_perp_2 = p.corr_l_perp_2;
     const double l_para_2 = p.corr_l_para_2;
@@ -509,7 +504,7 @@ ds_wsppi_spm_residual(const int k, const double * const x,
     const double * const gt_table = gt.table;
     const DSPixel * const l_pixels = pixels;
 
-    const int n = p.pix_n;
+    const int n = p.num_pixels;
     int i, j;
 
 #if defined(_OPENMP)
@@ -557,7 +552,7 @@ ds_wsppi_spm_q(const double * const d, double * const q)
     const double * const gt_table = gt.table;
     const DSPixel * const l_pixels = pixels;
 
-    const int n = p.pix_n;
+    const int n = p.num_pixels;
     int i, j;
 
 #if defined(_OPENMP)
@@ -590,7 +585,7 @@ pcg_wsppi_spm(const int k, double * const x, const double tol_norm_b,
     double * const d, double * const r, double * const s, double * const q)
 {
     int i;
-    const int n = p.pix_n;
+    const int n = p.num_pixels;
     const int max_iter = p.pcg_max_iter;
 
     // Setup the residual.
@@ -682,7 +677,7 @@ ds_map_covar_diag(double * const M_diag)
     int i, j;
 
     // constant local stuff.
-    const int pix_n = p.pix_n;
+    const int pix_n = p.num_pixels;
     const int map_n = p.map_n;
     const double tol = p.pcg_tol;
     const double var_s = p.corr_var_s;

@@ -20,28 +20,47 @@ print_usage()
 }
 
 void
-read_data(double * const skewer_x, double * const skewer_y,
+open_file_r(const std::string path, FILE *f)
+{
+
+    if (f == NULL) {
+        printf("Could not open file %s\n", path.c_str());
+        exit(1);
+    }
+}
+
+
+void
+read_data(double * const pixel_x, double * const pixel_y,
+    double * const pixel_z,
     double * const pixel_data, double * const pixel_weights)
 {
-    FILE *skewer_file = fopen(p.skewer_x_path.c_str(), "r");
-    //check(skewer_file, "Could not open file %s.", p.skewer_x_path.c_str());
-    fread(skewer_x, sizeof(double), p.num_skewers, skewer_file);
-    fclose(skewer_file);
+    FILE *infile = NULL;
 
-    skewer_file = fopen(p.skewer_y_path.c_str(), "r");
-    //check(skewer_file, "Could not open file %s.", p.skewer_y_path.c_str());
-    fread(skewer_y, sizeof(double), p.num_skewers, skewer_file);
-    fclose(skewer_file);
+    infile = fopen(p.pixel_x_path.c_str(), "r");
+    if (infile == NULL) { printf("Could not open file %s\n", p.pixel_x_path.c_str()); exit(1); }
+    fread(pixel_x, sizeof(double), p.num_pixels, infile);
+    fclose(infile);
 
-    FILE *data_file = fopen(p.pixel_data_path.c_str(), "r");
-    //check(data_file, "Could not open file %s.", p.pixel_data_path.c_str());
-    fread(pixel_data, sizeof(double), p.pix_n, data_file);
-    fclose(data_file);
+    infile = fopen(p.pixel_y_path.c_str(), "r");
+    if (infile == NULL) { printf("Could not open file %s\n", p.pixel_y_path.c_str()); exit(1); }
+    fread(pixel_y, sizeof(double), p.num_pixels, infile);
+    fclose(infile);
 
-    FILE *weights_file = fopen(p.pixel_weights_path.c_str(), "r");
-    //check(weights_file, "Could not open file %s.", p.pixel_weights_path.c_str());
-    fread(pixel_weights, sizeof(double), p.pix_n, weights_file);
-    fclose(weights_file);
+    infile = fopen(p.pixel_z_path.c_str(), "r");
+    if (infile == NULL) { printf("Could not open file %s\n", p.pixel_z_path.c_str()); exit(1); }
+    fread(pixel_z, sizeof(double), p.num_pixels, infile);
+    fclose(infile);
+
+    infile = fopen(p.pixel_data_path.c_str(), "r");
+    if (infile == NULL) { printf("Could not open file %s\n", p.pixel_data_path.c_str()); exit(1); }
+    fread(pixel_data, sizeof(double), p.num_pixels, infile);
+    fclose(infile);
+
+    infile = fopen(p.pixel_weights_path.c_str(), "r");
+    if (infile == NULL) { printf("Could not open file %s\n", p.pixel_weights_path.c_str()); exit(1); }
+    fread(pixel_weights, sizeof(double), p.num_pixels, infile);
+    fclose(infile);
 }
 
 int
@@ -69,28 +88,30 @@ main(int argc, char **argv)
     // Read in skewers.
     //
 
-    double *skewer_x = new double[p.num_skewers];
-    double *skewer_y = new double[p.num_skewers];
-    double *pixel_data = new double[p.pix_n];
-    double *pixel_weights = new double[p.pix_n];
+    double *pixel_x = new double[p.num_pixels];
+    double *pixel_y = new double[p.num_pixels];
+    double *pixel_z = new double[p.num_pixels];
+    double *pixel_data = new double[p.num_pixels];
+    double *pixel_weights = new double[p.num_pixels];
 
     puts("Reading skewer files.");
-    read_data(skewer_x, skewer_y, pixel_data, pixel_weights);
+    read_data(pixel_x, pixel_y, pixel_z, pixel_data, pixel_weights);
 
     //
     // Loop setup.
     //
 
     // Apply weights to data...
-    for (i = 0; i < p.pix_n; ++i) {
+    for (i = 0; i < p.num_pixels; ++i) {
         pixel_data[i] *= pixel_weights[i];
     }
 
     // Setup pixels.
-    ds_lum_init(skewer_x, skewer_y, pixel_weights);
+    ds_lum_init(pixel_x, pixel_y, pixel_z, pixel_weights);
 
-    delete [] skewer_x;
-    delete [] skewer_y;
+    delete [] pixel_x;
+    delete [] pixel_y;
+    delete [] pixel_z;
     delete [] pixel_weights;
 
     // Send off to compute the map.

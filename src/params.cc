@@ -21,10 +21,7 @@ ds_params_init(const std::string config_path)
     p.ly = 10.0;
     p.lz = 10.0;
 
-    p.num_skewers = 10;
-    p.num_pixels = 10;
-    p.pix_n = 100;
-    p.pix_dz = 1.0;
+    p.num_pixels = 100;
 
     p.map_nx = 10;
     p.map_ny = 10;
@@ -45,8 +42,9 @@ ds_params_init(const std::string config_path)
     p.option_map_covar = 0;
     p.option_smooth_map = 0;
 
-    p.skewer_x_path = "skewer_x.bin";
-    p.skewer_y_path = "skewer_y.bin";
+    p.pixel_x_path = "pixel_x.bin";
+    p.pixel_y_path = "pixel_y.bin";
+    p.pixel_z_path = "pixel_z.bin";
     p.pixel_data_path = "pixel_data.bin";
     p.pixel_weights_path = "pixel_weights.bin";
     p.map_path = "map.bin";
@@ -92,9 +90,6 @@ ds_params_init(const std::string config_path)
         else if (strcmp(key, "lz") == 0) {
             p.lz = atof(value);
         }
-        else if (strcmp(key, "num_skewers") == 0) {
-            p.num_skewers = atoi(value);
-        }
         else if (strcmp(key, "num_pixels") == 0) {
             p.num_pixels = atoi(value);
         }
@@ -133,11 +128,14 @@ ds_params_init(const std::string config_path)
         else if (strcmp(key, "option_smooth_map") == 0) {
             p.option_smooth_map = atoi(value);
         }
-        else if (strcmp(key, "skewer_x_path") == 0) {
-            p.skewer_x_path = value;
+        else if (strcmp(key, "pixel_x_path") == 0) {
+            p.pixel_x_path = value;
         }
-        else if (strcmp(key, "skewer_y_path") == 0) {
-            p.skewer_y_path = value;
+        else if (strcmp(key, "pixel_y_path") == 0) {
+            p.pixel_y_path = value;
+        }
+        else if (strcmp(key, "pixel_z_path") == 0) {
+            p.pixel_z_path = value;
         }
         else if (strcmp(key, "pixel_data_path") == 0) {
             p.pixel_data_path = value;
@@ -156,8 +154,6 @@ ds_params_init(const std::string config_path)
 
     fclose(config_file);
 
-    p.pix_n = p.num_pixels * p.num_skewers;
-    p.pix_dz = p.lz / p.num_pixels;
     p.map_n = p.map_nx * p.map_ny * p.map_nz;
     p.map_dx = p.lx / p.map_nx;
     p.map_dy = p.ly / p.map_ny;
