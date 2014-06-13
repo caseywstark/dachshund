@@ -118,8 +118,8 @@ ds_lum_init(const double * const skewer_x, const double * const skewer_y,
     ds_map_coords_init(p.map_nx, p.map_ny, p.map_nz, p.map_dx, p.map_dy,
         p.map_dz);
 
-    int gt_n = 50;
-    double gt_dx = 2.0 / gt_n;
+    int gt_n = 1000;
+    double gt_dx = 10.0 / gt_n;
     ds_gt_init(gt_n, gt_dx);
 }
 
@@ -186,7 +186,7 @@ ds_wsppi_residual(const double * const x, const double * const b,
         double xi = l_pixels[i].x;
         double yi = l_pixels[i].y;
         double zi = l_pixels[i].z;
-        double one_minus_wi = 1.0 - l_pixels[i].w;
+        double wii = l_pixels[i].w;
 
         for (j = 0; j < n; ++j) {
             // Separation vector components.
@@ -201,11 +201,11 @@ ds_wsppi_residual(const double * const x, const double * const b,
             // S = sigma^2 exp(...) exp(...)
             double g_perp = ds_linterp(x_perp_2, gt_n, gt_dx, gt_table);
             double g_para = ds_linterp(x_para_2, gt_n, gt_dx, gt_table);
-            double wsppi_ij = var_s * g_perp * g_para;
+            double wsppi_ij = wii * var_s * g_perp * g_para;
 
             // nice trick to avoid branching.
             int delta_ij = (i == j);
-            wsppi_ij = wsppi_ij + (1.0 - one_minus_wi * wsppi_ij) * delta_ij;
+            wsppi_ij = wsppi_ij + delta_ij;
 
             // Update sum.
             Ax_i += wsppi_ij * x[j];
@@ -236,7 +236,7 @@ ds_wsppi_q(const double * const d, double * const q)
         double xi = l_pixels[i].x;
         double yi = l_pixels[i].y;
         double zi = l_pixels[i].z;
-        double one_minus_wi = 1.0 - l_pixels[i].w;
+        double wii = l_pixels[i].w;
         for (j = 0; j < n; ++j) {
             double dx = xi - l_pixels[j].x;
             double dy = yi - l_pixels[j].y;
@@ -245,9 +245,9 @@ ds_wsppi_q(const double * const d, double * const q)
             double x_para_2 = dz*dz / l_para_2;
             double g_perp = ds_linterp(x_perp_2, gt_n, gt_dx, gt_table);
             double g_para = ds_linterp(x_para_2, gt_n, gt_dx, gt_table);
-            double wsppi_ij = var_s * g_perp * g_para;
+            double wsppi_ij = wii * var_s * g_perp * g_para;
             int delta_ij = (i == j);
-            wsppi_ij = wsppi_ij + (1.0 - one_minus_wi * wsppi_ij) * delta_ij;
+            wsppi_ij = wsppi_ij + delta_ij;
             q[i] += wsppi_ij * d[j];
         }
     }
