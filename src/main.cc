@@ -83,6 +83,7 @@ main(int argc, char **argv)
     //
 
     ds_params_init(config_path);
+    ds_params_print();
 
     //
     // Read in skewers.

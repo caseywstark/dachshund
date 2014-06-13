@@ -27,6 +27,7 @@ struct ds_params_s {
     // PCG
     int pcg_max_iter;
     double pcg_tol;
+    int pcg_step_r;
 
     // options
     int option_map_covar;
@@ -48,5 +49,8 @@ extern DSParams p;
 
 void
 ds_params_init(const std::string config_path);
+
+void
+ds_params_print();
 
 #endif

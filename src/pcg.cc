@@ -255,6 +255,8 @@ pcg_wsppi_b(const double * const b, double * const x)
     const int n = p.num_pixels;
     const int max_iter = p.pcg_max_iter;
     const double tol = p.pcg_tol;
+    const int pcg_step_r = p.pcg_step_r;
+    const double corr_var_s = p.corr_var_s;
 
     // Work arrays
     double *d = new double[n];
@@ -280,7 +282,7 @@ pcg_wsppi_b(const double * const b, double * const x)
     for (i = 0; i < n; ++i) {
         // no coord lookup for diagonal piece...
         // just w_i var + 1
-        double wsppi_ii = pixels[i].w * p.corr_var_s + 1.0;
+        double wsppi_ii = pixels[i].w * corr_var_s + 1.0;
         d[i] = r[i] / wsppi_ii;
     }
 
@@ -309,7 +311,7 @@ pcg_wsppi_b(const double * const b, double * const x)
         }
 
         // Update residual.
-        if (iter % 10 == 0) {
+        if (iter % pcg_step_r == 0) {
             // Full update.
             // r = b - A x
             ds_wsppi_residual(x, b, r);
@@ -324,7 +326,7 @@ pcg_wsppi_b(const double * const b, double * const x)
 
         // reapply preconditioner.
         for (i = 0; i < n; ++i) {
-            double wsppi_ii = pixels[i].w * p.corr_var_s + 1.0;
+            double wsppi_ii = pixels[i].w * corr_var_s + 1.0;
             s[i] = r[i] / wsppi_ii;
         }
 
@@ -587,6 +589,8 @@ pcg_wsppi_spm(const int k, double * const x, const double tol_norm_b,
     int i;
     const int n = p.num_pixels;
     const int max_iter = p.pcg_max_iter;
+    const int pcg_step_r = p.pcg_step_r;
+    const double corr_var_s = p.corr_var_s;
 
     // Setup the residual.
     // r = b - A x
@@ -596,7 +600,7 @@ pcg_wsppi_spm(const int k, double * const x, const double tol_norm_b,
     // For now, we will just try a Jacobian M (A diag).
     // s = M^-1 r
     for (i = 0; i < n; ++i) {
-        double wsppi_i = pixels[i].w * p.corr_var_s + 1.0;
+        double wsppi_i = pixels[i].w * corr_var_s + 1.0;
         d[i] = r[i] / wsppi_i;
     }
 
@@ -625,7 +629,7 @@ pcg_wsppi_spm(const int k, double * const x, const double tol_norm_b,
         }
 
         // Update residual.
-        if (iter % 10 == 0) {
+        if (iter % pcg_step_r == 0) {
             // Full update.
             // r = b - A x
             ds_wsppi_spm_residual(k, x, r);
@@ -640,7 +644,7 @@ pcg_wsppi_spm(const int k, double * const x, const double tol_norm_b,
 
         // reapply preconditioner.
         for (i = 0; i < n; ++i) {
-            double wsppi_ii = pixels[i].w * p.corr_var_s + 1.0;
+            double wsppi_ii = pixels[i].w * corr_var_s + 1.0;
             s[i] = r[i] / wsppi_ii;
         }
 

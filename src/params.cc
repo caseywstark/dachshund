@@ -37,6 +37,7 @@ ds_params_init(const std::string config_path)
 
     p.pcg_max_iter = 1;
     p.pcg_tol = 1.0;
+    p.pcg_step_r = 10;
 
     p.option_noise_covar = 0;
     p.option_map_covar = 0;
@@ -119,6 +120,9 @@ ds_params_init(const std::string config_path)
         else if (strcmp(key, "pcg_max_iter") == 0) {
             p.pcg_max_iter = atoi(value);
         }
+        else if (strcmp(key, "pcg_step_r") == 0) {
+            p.pcg_step_r = atoi(value);
+        }
         else if (strcmp(key, "option_noise_covar") == 0) {
             p.option_noise_covar = atoi(value);
         }
@@ -158,4 +162,34 @@ ds_params_init(const std::string config_path)
     p.map_dx = p.lx / p.map_nx;
     p.map_dy = p.ly / p.map_ny;
     p.map_dz = p.lz / p.map_nz;
+}
+
+void
+ds_params_print()
+{
+    printf("\n");
+    printf("Running dachshund with:\n");
+    printf("  pixels/map:\n");
+    printf("    lx ly lz = %f %f %f\n", p.lx, p.ly, p.lz);
+    printf("    npix = %i\n", p.num_pixels);
+    printf("    map nx ny nz = %i %i %i, n = %i\n", p.map_nx, p.map_ny, p.map_nz, p.map_n);
+    printf("    map dx dy dz = %f %f %f\n", p.map_dx, p.map_dy, p.map_dz);
+    printf("  signal:\n");
+    printf("    corr var_s = %f\n", p.corr_var_s);
+    printf("    2*(l_perp)^2 = %f    2*(l_para)^2 = %f\n", p.corr_l_perp_2, p.corr_l_para_2);
+    printf("  PCG:\n");
+    printf("    max iter = %i    step r = %i\n", p.pcg_max_iter, p.pcg_step_r);
+    printf("    tol = %f\n", p.pcg_tol);
+    printf("  options:\n");
+    printf("    map covar = %i\n", p.option_map_covar);
+    printf("    noise covar = %i\n", p.option_noise_covar);
+    printf("    smooth map = %i\n", p.option_smooth_map);
+    printf("  paths:\n");
+    printf("    x = %s\n", p.pixel_x_path.c_str());
+    printf("    y = %s\n", p.pixel_y_path.c_str());
+    printf("    z = %s\n", p.pixel_z_path.c_str());
+    printf("    data = %s\n", p.pixel_data_path.c_str());
+    printf("    weights = %s\n", p.pixel_weights_path.c_str());
+    printf("    map = %s\n", p.map_path.c_str());
+    printf("\n");
 }
