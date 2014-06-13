@@ -41,7 +41,7 @@ ds_params_init(const std::string config_path)
     p.pcg_max_iter = 1;
     p.pcg_tol = 1.0;
 
-    p.option_noise_covar = 1;
+    p.option_noise_covar = 0;
     p.option_map_covar = 0;
     p.option_smooth_map = 0;
 
@@ -112,11 +112,11 @@ ds_params_init(const std::string config_path)
         }
         else if (strcmp(key, "corr_l_para") == 0) {
             double x = atof(value);
-            p.corr_l_para_2 = x*x;
+            p.corr_l_para_2 = 2.0*x*x;
         }
         else if (strcmp(key, "corr_l_perp") == 0) {
             double x = atof(value);
-            p.corr_l_perp_2 = x*x;
+            p.corr_l_perp_2 = 2.0*x*x;
         }
         else if (strcmp(key, "pcg_tol") == 0) {
             p.pcg_tol = atof(value);
