@@ -20,17 +20,6 @@ print_usage()
 }
 
 void
-open_file_r(const std::string path, FILE *f)
-{
-
-    if (f == NULL) {
-        printf("Could not open file %s\n", path.c_str());
-        exit(1);
-    }
-}
-
-
-void
 read_data(double * const pixel_x, double * const pixel_y,
     double * const pixel_z,
     double * const pixel_data, double * const pixel_weights)
@@ -95,7 +84,7 @@ main(int argc, char **argv)
     double *pixel_data = new double[p.num_pixels];
     double *pixel_weights = new double[p.num_pixels];
 
-    puts("Reading skewer files.");
+    puts("Reading pixel files.");
     read_data(pixel_x, pixel_y, pixel_z, pixel_data, pixel_weights);
 
     //
