@@ -26,4 +26,3 @@ tests: $(OBJECTS) $(TESTS)
 .PHONY: clean
 clean:
 	rm -rf $(OBJECTS) $(TESTS)
-	rm -f tests/tests.log
