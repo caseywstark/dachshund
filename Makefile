@@ -20,7 +20,7 @@ TEST_TARGET = tests/run_tests.ex
 # Targets
 all: $(LIB_TARGET) $(APP_TARGET) tests
 
-lib/%.o: lib/%.cc
+lib/%.o: lib/%.cc lib/%.h
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
 
 $(LIB_TARGET): $(LIB_OBJS)
@@ -48,9 +48,9 @@ tests: $(TEST_TARGET)
 	@./$(TEST_TARGET)
 
 .PHONY: test
-test:
-	tests
+test: tests
+
 
 .PHONY: clean
 clean:
-	rm -rf $(LIB_OBJS) $(LIB_TARGET) $(TARGET) $(TEST_OBJS) $(TEST_TARGET)
+	rm -rf $(LIB_OBJS) $(LIB_TARGET) $(APP_OBJS) $(APP_TARGET) $(TEST_OBJS) $(TEST_TARGET)
