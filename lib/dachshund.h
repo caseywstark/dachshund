@@ -7,8 +7,9 @@ Project header.
 #ifndef __DACHSHUND_H__
 #define __DACHSHUND_H__
 
-#include "params.h"
-#include "pcg.h"
+#include "linalg.h"
+#include "map.h"
+#include "pixel.h"
 #include "timer.h"
 #include "util.h"
 
