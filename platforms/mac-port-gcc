@@ -2,6 +2,6 @@
 CXX := g++
 
 # Flags
-CXXFLAGS := -Wall -Wextra -pedantic -g -fPIC -O2 -funroll-loops
-CPPFLAGS := -Ilib
+CXXFLAGS := -Wall -Wextra -pedantic -g -O2 -funroll-loops
+CPPFLAGS :=
 LDFLAGS  :=

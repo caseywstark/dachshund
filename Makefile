@@ -5,6 +5,8 @@
 # LDFLAGS : the link flags
 include platform.make
 
+CPPFLAGS += -Ilib -Ieigen
+
 LIB_SRCS = $(wildcard lib/*.cc)
 LIB_OBJS = $(patsubst %.cc,%.o,$(LIB_SRCS))
 LIB_TARGET = libdachshund.a
@@ -49,7 +51,6 @@ tests: $(TEST_TARGET)
 
 .PHONY: test
 test: tests
-
 
 .PHONY: clean
 clean:
