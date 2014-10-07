@@ -88,12 +88,10 @@ signal_covar(const double x_perp_2, const double x_para_2,
     const double ga_perp = p->gaussian_const_perp * x_perp_2;
     const double ga_para = p->gaussian_const_para * x_para_2;
 
-    const double g_perp = linterp(ga_perp, p->func_table_n,
-        p->func_table_dx_inv, p->func_table);
-    const double g_para = linterp(ga_para, p->func_table_n,
+    const double gp = linterp(ga_perp + ga_para, p->func_table_n,
         p->func_table_dx_inv, p->func_table);
 
-    const double s = p->var_s * g_perp * g_para;
+    const double s = p->var_s * gp;
     return s;
 }
 
@@ -104,7 +102,7 @@ signal_covar_exact(const double x_perp_2, const double x_para_2,
     const double ga_perp = p->gaussian_const_perp * x_perp_2;
     const double ga_para = p->gaussian_const_para * x_para_2;
 
-    double s = p->var_s * exp(-ga_perp) * exp(-ga_para);
+    double s = p->var_s * exp( -(ga_perp + ga_para) );
     return s;
 }
 
