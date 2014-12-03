@@ -2,6 +2,6 @@
 CXX := CC
 
 # Flags
-CXXFLAGS := -Wall -Wextra -Wno-long-long -pedantic -g -O2 -funroll-loops
+CXXFLAGS := -Wall -Wextra -Wno-long-long -pedantic -O3 -funroll-loops
 CPPFLAGS :=
 LDFLAGS  :=
