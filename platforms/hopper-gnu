@@ -1,7 +1,0 @@
-# Compiler
-CXX := CC
-
-# Flags
-CXXFLAGS := -Wall -Wextra -Wno-long-long -pedantic -O3 -funroll-loops
-CPPFLAGS :=
-LDFLAGS  :=

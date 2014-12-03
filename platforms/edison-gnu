@@ -1,0 +1,7 @@
+# Compiler
+CXX := CC
+
+# Flags
+CXXFLAGS := -Wall -Wextra -Wno-long-long -Wno-variadic-macros -pedantic -O3 -funroll-loops -fopenmp
+CPPFLAGS :=
+LDFLAGS  := -fopenmp
