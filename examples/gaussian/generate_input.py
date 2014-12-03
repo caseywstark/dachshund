@@ -1,116 +1,63 @@
+"""
+Generate input files for a problem where the signal is
+
+s(x) = a exp[-(x - x0)^2 / b^2]
+
+"""
+
 import numpy as np
+
+# gaussian signal
+def g_signal(x, x0, a, b):
+    return a * np.exp(-( (x - x0)**2 ).sum(axis=1) / b**2)
 
 # domain size
 l = 1.0
-# gaussian center and size
-c = 0.5
-sigma = 0.3
+map_n = 11
+
+# pixels
+num_pixels = 500
+pix_x = l * np.random.random((num_pixels, 3))
+
+# gaussian params
+a = 1.0
+x0 = np.array([0.5, 0.5, 0.5])
+b = 0.15
+
+# signal
+pix_g = g_signal(pix_x, x0, a, b)
+mean_g = 0.5
+pix_s = pix_g / mean_g - 1.0
+# noise
+pix_nstd = 0.1 * a
+pix_n = pix_nstd * np.ones(num_pixels)
+# just take d = s
+pix_d = pix_s
+
+# pixel data altogether
+p = np.vstack([pix_x.T[0], pix_x.T[1], pix_x.T[2], pix_n, pix_d]).T
+p.tofile("pixel_data.bin")
+
+# write config file
+cf = open("run.cfg", "w")
+cf.write("lx = %f\n" % l)
+cf.write("ly = %f\n" % l)
+cf.write("lz = %f\n" % l)
+cf.write("num_pixels = %i\n" % num_pixels)
+cf.write("map_nx = %i\n" % map_n)
+cf.write("map_ny = %i\n" % map_n)
+cf.write("map_nz = %i\n" % map_n)
+cf.write("corr_var_s = 1.0\n")
+cf.write("corr_l_perp = %f\n" % b)
+cf.write("corr_l_para = %f\n" % b)
+cf.write("pcg_tol = 1.0e-5\n")
+cf.write("pcg_max_iter = 1000\n")
 
 # full map
-map_n = 7
 dx = l / map_n
 ii = np.mgrid[0:map_n, 0:map_n, 0:map_n]
 xx = dx * (ii + 0.5)
-rr = xx - c
-r2 = rr[0]*rr[0] + rr[1]*rr[1] + rr[2]*rr[2]
-g = np.exp(-r2/sigma**2)
-g_mean = g.mean()
-dg = g / g_mean - 1
-
-dg.tofile("ideal_signal.bin")
-
-# skewer setup
-
-n = 4
-num_skewers = n*n
-num_pixels = n
-pix_n = num_skewers * num_pixels
-
-dx = l / n
-dy = l / n
-dz = l / num_pixels
-
-# skewer pos.
-sx = np.zeros(num_skewers)
-sy = np.zeros(num_skewers)
-d = np.zeros((num_skewers, num_pixels))
-
-isk = 0
-for ix in xrange(n):
-    for iy in xrange(n):
-        x = dx * (ix + 0.5)
-        y = dx * (iy + 0.5)
-        for iz in xrange(num_pixels):
-            z = dz * (iz + 0.5)
-            rx = x - c
-            ry = y - c
-            rz = z - c
-            r2 = rx*rx + ry*ry + rz*rz
-            d[isk, iz] = np.exp(-r2 / sigma**2)
-        sx[isk] = x
-        sy[isk] = y
-        isk += 1
-
-dd = d / g_mean - 1
-w = np.ones(d.shape)
-
-# write out
-sx.tofile("skewer_x.bin")
-sy.tofile("skewer_y.bin")
-dd.tofile("pixel_data.bin")
-w.tofile("pixel_weights.bin")
-
-var_s = dd.std()**2
-print "var_s = %g" % var_s
-
-x_perp_2_list = []
-x_para_2_list = []
-s_list = []
-ss_list = []
-
-x2_list = []
-cs_list = []
-
-i = 0
-for ixi in xrange(n):
-    xi = dx * (ixi + 0.5)
-    for iyi in xrange(n):
-        yi = dy * (iyi + 0.5)
-        for izi in xrange(num_pixels):
-            zi = dz * (izi + 0.5)
-            i = ixi * n + iyi
-            di = dd[i, izi]
-
-            for ixj in xrange(n):
-                xj = dx * (ixj + 0.5)
-                dx_ij = xj - xi
-
-                for iyj in xrange(n):
-                    yj = dy * (iyj + 0.5)
-                    dy_ij = yj - yi
-                    x_perp_2 = (dx_ij*dx_ij + dy_ij*dy_ij)
-
-                    for izj in xrange(num_pixels):
-                        zj = dz * (izj + 0.5)
-                        dz_ij = zj - zi
-                        x_para_2 = dz_ij*dz_ij
-
-                        j = ixj * n + iyj
-                        dj = dd[j, izj]
-                        sij = di * dj
-
-                        ssij = var_s * np.exp(-x_para_2/sigma) * np.exp(-x_perp_2/sigma)
-
-                        x_perp_2_list.append(x_perp_2)
-                        x_para_2_list.append(x_para_2)
-                        s_list.append(sij)
-                        ss_list.append(ssij)
-
-                        x2 = dx_ij*dx_ij + dy_ij*dy_ij + dz_ij*dz_ij
-                        x2_list.append(x2)
-
-x_perp_2 = np.array(x_perp_2_list)
-x_para_2 = np.array(x_para_2_list)
-x2 = np.array(x2_list)
-s = np.array(s_list)
-ss = np.array(ss_list)
+xx = xx.reshape(3, map_n**3).T
+g = g_signal(xx, x0, a, b)
+s = g / mean_g - 1.0
+s.tofile("signal.bin")
