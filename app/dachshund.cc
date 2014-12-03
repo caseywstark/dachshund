@@ -9,8 +9,6 @@
 
 #include <iostream>
 
-//#include <mpi.h>
-
 #include "dachshund.h"
 
 //
@@ -218,6 +216,8 @@ main(int argc, char **argv)
     puts("Reading pixel data.");
     read_pixel_data(pixel_data_path, num_pixels, pixels);
 
+    puts("Preparing for x solve.");
+
     // Init map coords.
     init_uniform_map_coords(lx, ly, lz, map_nx, map_ny, map_nz, map_coords);
 
@@ -240,6 +240,8 @@ main(int argc, char **argv)
     // x solve
     double *x = new double[num_pixels];
     for (int i = 0; i < num_pixels; ++i) { x[i] = 0.0; }
+
+    puts("Starting solve.");
 
     if (solve_via_pcg) {
         // true for verbose option.
