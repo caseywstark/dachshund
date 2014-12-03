@@ -5,7 +5,7 @@
 # LDFLAGS : the link flags
 include platform.make
 
-CPPFLAGS += -Ilib -Ieigen
+CPPFLAGS += -I./lib -I./eigen
 
 LIB_SRCS = $(wildcard lib/*.cc)
 LIB_OBJS = $(patsubst %.cc,%.o,$(LIB_SRCS))
@@ -30,28 +30,21 @@ $(LIB_TARGET): $(LIB_OBJS)
 	ar cr $(LIB_TARGET) $(LIB_OBJS)
 	ranlib $(LIB_TARGET)
 
-app/%.o: app/%.cc
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
-
 $(APP_TARGET): $(LIB_TARGET) $(APP_OBJS)
 	@echo [MAKE] Linking app.
 	$(CXX) $(LDFLAGS) $(APP_OBJS) $(LIB_TARGET) $(LIBS) -o $@
 
-tests/%.o: tests/%.cc
-	$(CXX) $(CPPFLAGS) -Itests/UnitTest++/src $(CXXFLAGS) -c $< -o $@
-
 $(TEST_TARGET): $(LIB_TARGET) $(TEST_OBJS)
 	@echo [MAKE] Linking test runner.
-	$(CXX) $(LDFLAGS) -Ltests/UnitTest++ $(TEST_OBJS) $(LIB_TARGET) -lUnitTest++ $(LIBS) -o $@
+	$(CXX) $(LDFLAGS) $(TEST_OBJS) $(LIB_TARGET) $(LIBS) -o $@
 
 .PHONY: tests
 tests: $(TEST_TARGET)
 	@echo [MAKE] Running tests.
 	@./$(TEST_TARGET)
 
-.PHONY: test
-test: tests
-
 .PHONY: clean
 clean:
-	rm -rf $(LIB_OBJS) $(LIB_TARGET) $(APP_OBJS) $(APP_TARGET) $(TEST_OBJS) $(TEST_TARGET)
+	rm -rf $(LIB_OBJS) $(LIB_TARGET)
+	rm -rf $(APP_OBJS) $(APP_TARGET)
+	rm -rf $(TEST_OBJS) $(TEST_TARGET)
