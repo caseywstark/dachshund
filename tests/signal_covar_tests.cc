@@ -4,12 +4,13 @@
 
 #include <cmath>
 
+#include "catch.hpp"
+
 #include "dachshund.h"
 #include "test_utils.h"
 
-TEST(SAccuracy)
+TEST_CASE("S lookup vs. exact 1D", "[signal-covar]")
 {
-    puts("[TEST] S lookup vs. exact 1D.");
     const double s_tol = 0.001;
     const double l = 0.5;
     const double x_max = default_gaussian_table_x_max * l;
@@ -23,15 +24,13 @@ TEST(SAccuracy)
         double sf = signal_covar(x*x, 0.0, p);
         double se = exp(- (x * x) / 2.0 / (l * l) );
         //printf("signal covar: x %e   Sf %e   Se %e\n", x, sf, se);
-        CHECK_DTOL(sf, se, 0.0, s_tol);
-
+        REQUIRE( dtol(sf, se, 0.0, s_tol) );
         x += dx_samp;
     }
 }
 
-TEST(SAccuracy2d)
+TEST_CASE("S lookup vs. exact", "[signal-covar]")
 {
-    puts("[TEST] S lookup vs. exact.");
     const double s_tol = 0.001;
 
     const double l0 = 0.8;
@@ -59,15 +58,14 @@ TEST(SAccuracy2d)
             double se = exp(-(x0 * x0) / 2.0 / (l0 * l0) -(x1 * x1) / 2.0 / (l1 * l1));
 
             //printf("signal covar: x0 %e x1 %e   Sf %e   Se %e\n", x0, x1, sf, se);
-            CHECK_DTOL(sf, se, 0.0, s_tol);
+            REQUIRE( dtol(sf, se, 0.0, s_tol) );
         }
     }
 }
 
 
-TEST(SBounds)
+TEST_CASE("S lookup table cutoff", "[signal-covar]")
 {
-    puts("[TEST] S lookup table cutoff.");
     const double l = rng();
     SignalCovarParams *p = new SignalCovarParams(1.0, l, l);
 
@@ -76,9 +74,9 @@ TEST(SBounds)
 
     x = (default_gaussian_table_x_max - 0.01) * l;
     sf = signal_covar(x*x, 0.0, p);
-    CHECK(sf > 0.0);
+    REQUIRE(sf > 0.0);
 
     x = (default_gaussian_table_x_max + 0.01) * l;
     sf = signal_covar(x*x, 0.0, p);
-    CHECK(sf == 0.0);
+    REQUIRE(sf == 0.0);
 }

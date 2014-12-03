@@ -4,165 +4,137 @@
 
 #include <cmath>
 
+#include "catch.hpp"
+
 #include "dachshund.h"
 #include "test_utils.h"
 
 const int num_pixels = 2000;
 const std::string pixel_data_path = "tests/small_pixel_data.bin";
 
-struct SmallWFX
+TEST_CASE("Comparing WF x solve methods", "[x-solve]")
 {
-    SignalCovarParams *s_params;
+    SignalCovarParams *s_params = new SignalCovarParams(0.05, 1.0, 1.0);
 
-    Pixel *pixels;
-    NPixel *npixels;
-    WPixel *wpixels;
+    Pixel *pixels = new Pixel[num_pixels];
+    read_pixel_data(pixel_data_path, num_pixels, pixels);
+    NPixel *npixels = new NPixel[num_pixels];
+    pixel_to_npixel(num_pixels, pixels, npixels);
+    WPixel *wpixels = new WPixel[num_pixels];
+    pixel_to_wpixel(num_pixels, pixels, wpixels);
 
-    WFX_SN *wfx_sn;
-    WFX_W *wfx_w;
+    WFX_SN *wfx_sn = new WFX_SN(num_pixels, npixels, s_params);
+    WFX_W *wfx_w = new WFX_W(num_pixels, wpixels, s_params);
 
-    SmallWFX() {
-        s_params = new SignalCovarParams(0.05, 1.0, 1.0);
+    SECTION("different x expressions.") {
+        double *x_sn = new double[num_pixels];
+        double *x_w = new double[num_pixels];
 
-        // pixel setup
-        pixels = new Pixel[num_pixels];
-        read_pixel_data(pixel_data_path, num_pixels, pixels);
+        // false for verbose, true for exact
+        wfx_sn->solve_cf(x_sn, false, true);
+        wfx_w->solve_cf(x_w, false, true);
 
-        npixels = new NPixel[num_pixels];
-        pixel_to_npixel(num_pixels, pixels, npixels);
+        // test for close
+        for (int i = 0; i < num_pixels; ++i) {
+            REQUIRE( dtol(x_sn[i], x_w[i], 0.0, 1.0e-8) );
+        }
 
-        wpixels = new WPixel[num_pixels];
-        pixel_to_wpixel(num_pixels, pixels, wpixels);
-
-        wfx_sn = new WFX_SN(num_pixels, npixels, s_params);
-        wfx_w = new WFX_W(num_pixels, wpixels, s_params);
+        delete [] x_sn;
+        delete [] x_w;
     }
 
-    ~SmallWFX() {
-        delete s_params;
-        delete [] pixels;
-        delete [] npixels;
-        delete [] wpixels;
-        delete wfx_sn;
-        delete wfx_w;
+    SECTION("A_ij with lookup S vs. exact S.") {
+        // compute A_ij error rms
+        double x2_sum = 0.0;
+        double xerr2_sum = 0.0;
+        for (int i = 0; i < num_pixels; ++i) {
+            for (int j = 0; j < num_pixels; ++j) {
+                double aij_exact = wfx_sn->A(i, j, true);
+                double aij_lu = wfx_sn->A(i, j, false);
+
+                double x = aij_exact;
+                double xerr = aij_lu - aij_exact;
+                x2_sum += x * x;
+                xerr2_sum += xerr * xerr;
+            }
+        }
+
+        const int nn = num_pixels * num_pixels;
+        double x2_mean = x2_sum / nn;
+        double xerr2_mean = xerr2_sum / nn;
+        double x_rms = sqrt(x2_mean);
+        double xerr_rms = sqrt(xerr2_mean);
+
+        REQUIRE(xerr_rms < 1.0e-3 * x_rms);
     }
-};
 
-TEST_FIXTURE(SmallWFX, sn_vs_w)
-{
-    puts("[TEST] x solve: different x expressions.");
+    SECTION("exact solve with lookup S vs. exact S.") {
+        double *x_lu = new double[num_pixels];
+        double *x_exact = new double[num_pixels];
 
-    double *x_sn = new double[num_pixels];
-    double *x_w = new double[num_pixels];
+        wfx_sn->solve_cf(x_lu, false, false);
+        wfx_sn->solve_cf(x_exact, false, true);
 
-    // false for verbose, true for exact
-    wfx_sn->solve_cf(x_sn, false, true);
-    wfx_w->solve_cf(x_w, false, true);
-
-    // test for close
-    for (int i = 0; i < num_pixels; ++i) {
-        CHECK_DTOL(x_sn[i], x_w[i], 0.0, 1.0e-8);
-    }
-
-    delete [] x_sn;
-    delete [] x_w;
-}
-
-TEST_FIXTURE(SmallWFX, Aij_lookup_s_vs_exact_s)
-{
-    puts("[TEST] x solve: A_ij with lookup S vs. exact S.");
-
-    // compute A_ij error rms
-    double x2_sum = 0.0;
-    double xerr2_sum = 0.0;
-    for (int i = 0; i < num_pixels; ++i) {
-        for (int j = 0; j < num_pixels; ++j) {
-            double aij_exact = wfx_sn->A(i, j, true);
-            double aij_lu = wfx_sn->A(i, j, false);
-
-            double x = aij_exact;
-            double xerr = aij_lu - aij_exact;
+        // compute x error rms
+        double x2_sum = 0.0;
+        double xerr2_sum = 0.0;
+        for (int i = 0; i < num_pixels; ++i) {
+            double x = x_exact[i];
+            double xerr = x_lu[i] - x_exact[i];
             x2_sum += x * x;
             xerr2_sum += xerr * xerr;
         }
+
+        const int nn = num_pixels;
+        double x2_mean = x2_sum / nn;
+        double xerr2_mean = xerr2_sum / nn;
+        double x_rms = sqrt(x2_mean);
+        double xerr_rms = sqrt(xerr2_mean);
+
+        REQUIRE(xerr_rms < 1.0e-2 * x_rms);
+
+        delete [] x_lu;
+        delete [] x_exact;
     }
 
-    const int nn = num_pixels * num_pixels;
-    double x2_mean = x2_sum / nn;
-    double xerr2_mean = xerr2_sum / nn;
-    double x_rms = sqrt(x2_mean);
-    double xerr_rms = sqrt(xerr2_mean);
+    SECTION("PCG with lookup S vs. CF with exact S.") {
+        PCGParams pcg_params;
+        pcg_params.max_iter = 1000;
+        pcg_params.step_r = 10;
+        pcg_params.tol = 1.0e-4;
 
-    CHECK(xerr_rms < 1.0e-3 * x_rms);
+        double *x_pcg = new double[num_pixels];
+        for (int i = 0; i < num_pixels; ++i) { x_pcg[i] = 0.0; }
+        double *x_cf = new double[num_pixels];
 
-}
+        wfx_w->solve_cf(x_cf, false, false);
+        wfx_w->solve_pcg(x_pcg, &pcg_params, false);
 
-TEST_FIXTURE(SmallWFX, lookup_s_vs_exact_s)
-{
-    puts("[TEST] x solve: exact solve with lookup S vs. exact S.");
+        // compute x error rms
+        double x2_sum = 0.0;
+        for (int i = 0; i < num_pixels; ++i) {
+            double x_err = x_pcg[i] / x_cf[i] - 1.0;
+            x2_sum += x_err * x_err;
+        }
+        double x2_mean = x2_sum / num_pixels;
+        double rms = sqrt(x2_mean);
 
-    double *x_lu = new double[num_pixels];
-    double *x_exact = new double[num_pixels];
+        REQUIRE(rms < 0.01);
 
-    wfx_sn->solve_cf(x_lu, false, false);
-    wfx_sn->solve_cf(x_exact, false, true);
-
-    // compute x error rms
-    double x2_sum = 0.0;
-    double xerr2_sum = 0.0;
-    for (int i = 0; i < num_pixels; ++i) {
-        double x = x_exact[i];
-        double xerr = x_lu[i] - x_exact[i];
-        x2_sum += x * x;
-        xerr2_sum += xerr * xerr;
+        delete [] x_pcg;
+        delete [] x_cf;
     }
 
-    const int nn = num_pixels;
-    double x2_mean = x2_sum / nn;
-    double xerr2_mean = xerr2_sum / nn;
-    double x_rms = sqrt(x2_mean);
-    double xerr_rms = sqrt(xerr2_mean);
-
-    CHECK(xerr_rms < 1.0e-2 * x_rms);
-
-    delete [] x_lu;
-    delete [] x_exact;
-}
-
-
-TEST_FIXTURE(SmallWFX, solve_pcg_vs_cf)
-{
-    puts("[TEST] x solve: PCG with lookup S vs. CF with exact S.");
-    PCGParams pcg_params;
-    pcg_params.max_iter = 1000;
-    pcg_params.step_r = 10;
-    pcg_params.tol = 1.0e-4;
-
-    double *x_pcg = new double[num_pixels];
-    for (int i = 0; i < num_pixels; ++i) { x_pcg[i] = 0.0; }
-    double *x_cf = new double[num_pixels];
-
-    wfx_w->solve_cf(x_cf, false, false);
-    wfx_w->solve_pcg(x_pcg, &pcg_params, false);
-
-    // compute x error rms
-    double x2_sum = 0.0;
-    for (int i = 0; i < num_pixels; ++i) {
-        double x_err = x_pcg[i] / x_cf[i] - 1.0;
-        x2_sum += x_err * x_err;
-    }
-    double x2_mean = x2_sum / num_pixels;
-    double rms = sqrt(x2_mean);
-
-    CHECK(rms < 0.01);
-
-    delete [] x_pcg;
-    delete [] x_cf;
+    delete s_params;
+    delete [] pixels;
+    delete [] npixels;
+    delete [] wpixels;
+    delete wfx_sn;
+    delete wfx_w;
 }
 
 /*
-TEST_FIXTURE(SmallWFX, pcg_sn_vs_w)
-{
+SECTION("SmallWFX") {
     double *x_chol = new double[num_pixels];
     double *x_sn = new double[num_pixels];
     for (int i = 0; i < num_pixels; ++i) { x_sn[i] = 0.0; }
