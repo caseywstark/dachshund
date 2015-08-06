@@ -13,11 +13,11 @@ LIB_TARGET = libdachshund.a
 
 APP_SRCS = $(wildcard app/*.cc)
 APP_OBJS = $(patsubst %.cc,%.o,$(APP_SRCS))
-APP_TARGET = dachshund.ex
+APP_TARGET = dachshund.exe
 
 TEST_SRCS = $(wildcard tests/*.cc)
 TEST_OBJS = $(patsubst %.cc,%.o,$(TEST_SRCS))
-TEST_TARGET = tests/run_tests.ex
+TEST_TARGET = tests/run_tests.exe
 
 # Targets
 all: $(LIB_TARGET) $(APP_TARGET) tests
