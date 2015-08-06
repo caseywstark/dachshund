@@ -2,5 +2,6 @@
 *.d
 *.a
 
-*.ex
+*.exe
 platform.make
+
