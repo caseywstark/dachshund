@@ -1,19 +1,15 @@
+/*
+The test runner main.
+*/
 
-#include <cstdlib>
+// Cheat to turn gtest into a header-only lib.
+#include "gtest/src/gtest-all.cc"
+#include "test_utils.h"
 
-#define CATCH_CONFIG_RUNNER
-#include "catch.hpp"
-
-int main( int argc, char* const argv[] )
+int main(int argc, char **argv)
 {
-    // global setup...
-
-    // setup rng.
-    srand(time(0));
-
-    int result = Catch::Session().run( argc, argv );
-
-    // global clean-up...
-
+    init_rng();
+    testing::InitGoogleTest(&argc, argv);
+    int result = RUN_ALL_TESTS();
     return result;
 }

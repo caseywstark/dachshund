@@ -2,67 +2,73 @@
 2014, the dachshund authors.
 */
 
-#include <cmath>
-
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "dachshund.h"
 #include "test_utils.h"
 
-const int n = 10;
+class PixelTest : public testing::Test {
+  protected:
+    const static int n = 10;
 
-TEST_CASE("Pixel conversions", "[pixel]") {
-    double *nvec = new double[n];
-    double *dvec = new double[n];
-    Pixel *pixels = new Pixel[n];
+    virtual void SetUp() {
+        n_vec.resize(n);
+        d_vec.resize(n);
+        pixels = new Pixel[n];
+
+        for (int i = 0; i < n; ++i) {
+            n_vec[i] = rng();
+            d_vec[i] = rng();
+
+            pixels[i].x = 0.0;
+            pixels[i].y = 0.0;
+            pixels[i].z = 0.0;
+            pixels[i].n = n_vec[i];
+            pixels[i].d = d_vec[i];
+        }
+    }
+
+    virtual void TearDown() {
+        delete [] pixels;
+    }
+
+    std::vector<double> n_vec;
+    std::vector<double> d_vec;
+    Pixel *pixels;
+};
+
+TEST_F(PixelTest, NPixel_conversion) {
+    // Reuse the same block.
+    NPixel *npixels = (NPixel *) pixels;
+    pixel_to_npixel(n, pixels, npixels);
 
     for (int i = 0; i < n; ++i) {
-        nvec[i] = rng();
-        dvec[i] = rng();
-
-        pixels[i].x = 0.0;
-        pixels[i].y = 0.0;
-        pixels[i].z = 0.0;
-        pixels[i].n = nvec[i];
-        pixels[i].d = dvec[i];
+        EXPECT_EQ(n_vec[i] * n_vec[i], npixels[i].N);
+        EXPECT_EQ(d_vec[i], npixels[i].d);
     }
 
-    SECTION("pixel to npixel") {
-        NPixel *npixels = (NPixel *) pixels;
-        pixel_to_npixel(n, pixels, npixels);
+    npixel_to_pixel(n, npixels, pixels);
 
-        for (int i = 0; i < n; ++i) {
-            REQUIRE( npixels[i].N == nvec[i] * nvec[i] );
-            REQUIRE( npixels[i].d == dvec[i] );
-        }
+    for (int i = 0; i < n; ++i) {
+        EXPECT_EQ(n_vec[i], pixels[i].n);
+        EXPECT_EQ(d_vec[i], pixels[i].d);
+    }
+}
 
-        npixel_to_pixel(n, npixels, pixels);
+TEST_F(PixelTest, WPixel_conversion) {
+    WPixel *wpixels = (WPixel *) pixels;
+    pixel_to_wpixel(n, pixels, wpixels);
 
-        for (int i = 0; i < n; ++i) {
-            REQUIRE( pixels[i].n == nvec[i] );
-            REQUIRE( pixels[i].d == dvec[i] );
-        }
+    for (int i = 0; i < n; ++i) {
+        EXPECT_EQ(1.0 / n_vec[i], wpixels[i].w);
+        EXPECT_EQ(d_vec[i] / n_vec[i], wpixels[i].wd);
     }
 
-    SECTION("pixel to wpixel") {
-        WPixel *wpixels = (WPixel *) pixels;
-        pixel_to_wpixel(n, pixels, wpixels);
+    wpixel_to_pixel(n, wpixels, pixels);
 
-        for (int i = 0; i < n; ++i) {
-            REQUIRE( wpixels[i].w == 1.0 / nvec[i] );
-            REQUIRE( wpixels[i].wd == dvec[i] / nvec[i] );
-        }
-
-        wpixel_to_pixel(n, wpixels, pixels);
-
-        for (int i = 0; i < n; ++i) {
-            // add some tol.
-            REQUIRE( dtol(pixels[i].n, nvec[i], 0.0, 1e-15) );
-            REQUIRE( dtol(pixels[i].d, dvec[i], 0.0, 1e-15) );
-        }
+    for (int i = 0; i < n; ++i) {
+        // Add some tol.
+        EXPECT_EQTOL(n_vec[i], pixels[i].n, 0.0, 1e-15);
+        EXPECT_EQTOL(d_vec[i], pixels[i].d, 0.0, 1e-15);
     }
-
-    delete [] nvec;
-    delete [] dvec;
-    delete [] pixels;
 }

@@ -1,20 +1,19 @@
 #ifndef __ds_test_utils_h__
 #define __ds_test_utils_h__
 
-#include <cmath>
-#include <cstdlib>
+#include "gtest/gtest.h"
 
-static inline bool
-dtol(const double a, const double b, const double atol,
-    const double rtol)
-{
-    return fabs(a - b) <= (atol + rtol * fabs(b));
-}
+#define ASSERT_EQTOL(expected, actual, abs_tol, rel_tol) \
+    ASSERT_PRED4(equal_within_tol, expected, actual, abs_tol, rel_tol)
+#define EXPECT_EQTOL(expected, actual, abs_tol, rel_tol) \
+    EXPECT_PRED4(equal_within_tol, expected, actual, abs_tol, rel_tol)
 
-static inline double
-rng()
-{
-    return rand() / double(RAND_MAX);
-}
+bool equal_within_tol(const double a, const double b, const double abs_tol,
+    const double rel_tol);
+
+void init_rng();
+
+double rng();
+
 
 #endif
