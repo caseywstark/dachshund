@@ -291,8 +291,7 @@ main(int argc, char **argv)
     delete [] pixels;
 
     // report timing.
-    std::string r = g_timer.report();
-    std::cout << r;
+    printf("Total time: %.2f s.\n", total_timer.elapsed());
 
     return 0;
 }
