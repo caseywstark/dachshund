@@ -5,7 +5,7 @@
 # LDFLAGS : the link flags
 include platform.make
 
-CPPFLAGS += -I./lib -I./eigen
+CPPFLAGS += -I./lib -I./ext -I./ext/gtest -I./ext/gtest/include
 
 LIB_SRCS = $(wildcard lib/*.cc)
 LIB_OBJS = $(patsubst %.cc,%.o,$(LIB_SRCS))
