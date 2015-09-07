@@ -20,7 +20,7 @@ TEST_OBJS = $(patsubst %.cc,%.o,$(TEST_SRCS))
 TEST_TARGET = tests/run_tests.exe
 
 # Targets
-all: $(LIB_TARGET) $(APP_TARGET) tests
+all: $(LIB_TARGET) tests $(APP_TARGET)
 
 lib/%.o: lib/%.cc lib/%.h
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@

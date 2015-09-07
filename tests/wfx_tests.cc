@@ -25,8 +25,8 @@ class SolveRegressionTest : public testing::Test {
         wpixels = new WPixel[num_pixels];
         pixel_to_wpixel(num_pixels, pixels, wpixels);
 
-        wfx_sn = new WFX_SN(num_pixels, npixels, s_params);
-        wfx_w = new WFX_W(num_pixels, wpixels, s_params);
+        wf_vector_sn = new WFVectorSN(num_pixels, npixels, s_params);
+        wf_vector_w = new WFVectorW(num_pixels, wpixels, s_params);
     }
 
     virtual void TearDown() {
@@ -34,16 +34,16 @@ class SolveRegressionTest : public testing::Test {
         delete [] pixels;
         delete [] npixels;
         delete [] wpixels;
-        delete wfx_sn;
-        delete wfx_w;
+        delete wf_vector_sn;
+        delete wf_vector_w;
     }
 
     SignalCovarParams *s_params;
     Pixel *pixels;
     NPixel *npixels;
     WPixel *wpixels;
-    WFX_SN *wfx_sn;
-    WFX_W *wfx_w;
+    WFVectorSN *wf_vector_sn;
+    WFVectorW *wf_vector_w;
 };
 
 TEST_F(SolveRegressionTest, different_x_expressions) {
@@ -51,8 +51,8 @@ TEST_F(SolveRegressionTest, different_x_expressions) {
     double *x_w = new double[num_pixels];
 
     // false for verbose, true for exact
-    wfx_sn->solve_cf(x_sn, false, true);
-    wfx_w->solve_cf(x_w, false, true);
+    wf_vector_sn->solve_cf(x_sn, false, true);
+    wf_vector_w->solve_cf(x_w, false, true);
 
     // test for close
     for (int i = 0; i < num_pixels; ++i) {
@@ -71,8 +71,8 @@ TEST_F(SolveRegressionTest, A_using_lookup_S_error_rms) {
     double xerr2_sum = 0.0;
     for (int i = 0; i < num_pixels; ++i) {
         for (int j = 0; j < num_pixels; ++j) {
-            double aij_exact = wfx_sn->A(i, j, true);
-            double aij_lu = wfx_sn->A(i, j, false);
+            double aij_exact = wf_vector_sn->A(i, j, true);
+            double aij_lu = wf_vector_sn->A(i, j, false);
 
             double x = aij_exact;
             double xerr = aij_lu - aij_exact;
@@ -94,8 +94,8 @@ TEST_F(SolveRegressionTest, solve_using_lookup_S_vs_exact_S) {
     double *x_lu = new double[num_pixels];
     double *x_exact = new double[num_pixels];
 
-    wfx_sn->solve_cf(x_lu, false, false);
-    wfx_sn->solve_cf(x_exact, false, true);
+    wf_vector_sn->solve_cf(x_lu, false, false);
+    wf_vector_sn->solve_cf(x_exact, false, true);
 
     // compute x error rms
     double x2_sum = 0.0;
@@ -122,16 +122,18 @@ TEST_F(SolveRegressionTest, solve_using_lookup_S_vs_exact_S) {
 // This is like the full error case.
 TEST_F(SolveRegressionTest, PCG_lookup_S_vs_CF_exact_S) {
     PCGParams pcg_params;
+    pcg_params.n = num_pixels;
     pcg_params.max_iter = 1000;
     pcg_params.step_r = 10;
     pcg_params.tol = 1.0e-4;
+    pcg_params.verbose = false;
 
     double *x_pcg = new double[num_pixels];
     for (int i = 0; i < num_pixels; ++i) { x_pcg[i] = 0.0; }
     double *x_cf = new double[num_pixels];
 
-    wfx_w->solve_cf(x_cf, false, false);
-    wfx_w->solve_pcg(x_pcg, &pcg_params, false);
+    wf_vector_w->solve_cf(x_cf, false, false);
+    wf_vector_w->solve_pcg(pcg_params, x_pcg);
 
     // compute x error rms
     double x2_sum = 0.0;

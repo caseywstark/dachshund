@@ -17,6 +17,7 @@ class PerformanceRegressionTest : public testing::Test {
         const std::string pixel_data_path = "tests/small_pixel_data.bin";
 
         s_params = new SignalCovarParams(0.05, 2.0, 2.0);
+        pcg_params = {num_pixels, 100, 100, 1e-2, false};
 
         pixels = new Pixel[num_pixels];
         read_pixel_data(pixel_data_path, num_pixels, pixels);
@@ -25,8 +26,8 @@ class PerformanceRegressionTest : public testing::Test {
         wpixels = new WPixel[num_pixels];
         pixel_to_wpixel(num_pixels, pixels, wpixels);
 
-        wfx_sn = new WFX_SN(num_pixels, npixels, s_params);
-        wfx_w = new WFX_W(num_pixels, wpixels, s_params);
+        wfx_sn = new WFVectorSN(num_pixels, npixels, s_params);
+        wfx_w = new WFVectorW(num_pixels, wpixels, s_params);
 
         x = new double[num_pixels];
     }
@@ -45,22 +46,23 @@ class PerformanceRegressionTest : public testing::Test {
     Pixel *pixels;
     NPixel *npixels;
     WPixel *wpixels;
-    WFX_SN *wfx_sn;
-    WFX_W *wfx_w;
+    PCGParams pcg_params;
+    WFVectorSN *wfx_sn;
+    WFVectorW *wfx_w;
     double *x;
 };
 
-TEST_F(PerformanceRegressionTest, wfx_sn_solve_time) {
+TEST_F(PerformanceRegressionTest, wf_vector_sn_solve_time) {
     timer.reset();
-    wfx_sn->solve_cf(x, false, false);
+    wfx_sn->solve_pcg(pcg_params, x);
     double elapsed = timer.elapsed();
     printf("    Took %.2f s (typically 0.7 s on 2.2 GHz)\n", elapsed);
     EXPECT_LT(elapsed, 1.0);
 }
 
-TEST_F(PerformanceRegressionTest, wfx_w_solve_time) {
+TEST_F(PerformanceRegressionTest, wf_vector_w_solve_time) {
     timer.reset();
-    wfx_w->solve_cf(x, false, false);
+    wfx_w->solve_pcg(pcg_params, x);
     double elapsed = timer.elapsed();
     printf("    Took %.2f s (typically 0.7 s on 2.2 GHz)\n", elapsed);
     EXPECT_LT(elapsed, 1.0);
@@ -68,7 +70,7 @@ TEST_F(PerformanceRegressionTest, wfx_w_solve_time) {
 
 TEST_F(PerformanceRegressionTest, map_multiply_time) {
     // This is a waste, but small enough.
-    wfx_sn->solve_cf(x, false, false);
+    wfx_sn->solve_pcg(pcg_params, x);
 
     const Point * const pixel_coords =
         points_from_pixels_alloc(num_pixels, pixels);

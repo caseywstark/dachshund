@@ -9,8 +9,12 @@ Project header.
 
 #include "linalg.h"
 #include "map.h"
+#include "map_covar.h"
+#include "pcg.h"
 #include "pixel.h"
+#include "signal_covar.h"
 #include "timer.h"
 #include "util.h"
+#include "wf_vector.h"
 
 #endif
