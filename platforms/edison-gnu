@@ -2,6 +2,6 @@
 CXX := CC
 
 # Flags
-CXXFLAGS := -Wall -Wextra -Wno-long-long -Wno-variadic-macros -pedantic -O3 -funroll-loops -fopenmp
+CXXFLAGS := -std=c++11 -Wall -Wextra -Wno-long-long -Wno-variadic-macros -pedantic -O3 -funroll-loops -fopenmp
 CPPFLAGS :=
 LDFLAGS  := -fopenmp
