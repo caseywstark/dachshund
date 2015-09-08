@@ -8,10 +8,9 @@
 #include "pixel.h"
 #include "signal_covar.h"
 
-void sigma_m_noise_dom(const int n_map, const Point* const map_coords,
-    const int n_pix, const Pixel* const pixels,
-    const SignalCovarParams* const s_params,
-    double* const sigma_m);
+void sigma_m_noise_dom(const int n_pix, const NPixel* pixels,
+    const int n_map, const Point* map_coords,
+    const SignalCovarParams* s_params, double* sigma_m);
 
 // The map covariance is
 // M = S^mp (S^pp + N) S^pm .

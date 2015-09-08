@@ -20,7 +20,7 @@ TEST_OBJS = $(patsubst %.cc,%.o,$(TEST_SRCS))
 TEST_TARGET = tests/run_tests.exe
 
 # Targets
-all: $(LIB_TARGET) tests $(APP_TARGET)
+all: $(LIB_TARGET) $(APP_TARGET) tests
 
 lib/%.o: lib/%.cc lib/%.h
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
@@ -32,11 +32,11 @@ $(LIB_TARGET): $(LIB_OBJS)
 
 $(APP_TARGET): $(LIB_TARGET) $(APP_OBJS)
 	@echo [MAKE] Linking app.
-	$(CXX) $(LDFLAGS) $(APP_OBJS) $(LIB_TARGET) $(LIBS) -o $@
+	$(CXX) $(LDFLAGS) -o $@ $(LIB_TARGET) $(APP_OBJS) $(LIBS)
 
 $(TEST_TARGET): $(LIB_TARGET) $(TEST_OBJS)
 	@echo [MAKE] Linking test runner.
-	$(CXX) $(LDFLAGS) $(TEST_OBJS) $(LIB_TARGET) $(LIBS) -o $@
+	$(CXX) $(LDFLAGS) -o $@ $(LIB_TARGET) $(TEST_OBJS) $(LIBS)
 
 .PHONY: tests
 tests: $(TEST_TARGET)

@@ -8,10 +8,9 @@
 // Since W is diagonal,
 // \sigma_m_i = M_ii = S^mp_ij W_jk S^pm_kl = S^mp_ij W_jj S^pm_ji
 
-void sigma_m_noise_dom(const int n_map, const Point* const map_coords,
-    const int n_pix, const NPixel* const pixels,
-    const SignalCovarParams* const s_params,
-    double* const sigma_m) {
+void sigma_m_noise_dom(const int n_pix, const NPixel* pixels,
+    const int n_map, const Point* map_coords,
+    const SignalCovarParams* s_params, double* sigma_m) {
   int i, j;
 #if defined(_OPENMP)
   #pragma omp parallel for private(i, j)

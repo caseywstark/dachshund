@@ -206,11 +206,12 @@ main(int argc, char **argv)
     //
 
     // Allocate everything we will pass to reconstruction here.
-    Pixel * const pixels = new Pixel[num_pixels];
-    Point * const map_coords = new Point[num_map_points];
-    SignalCovarParams * const s_params =
+    Pixel* const pixels = new Pixel[num_pixels];
+    Point* const map_coords = new Point[num_map_points];
+    SignalCovarParams* const s_params =
         new SignalCovarParams(corr_var_s, corr_l_perp, corr_l_para);
-    PCGParams * const pcg_params = new PCGParams;
+    PCGParams pcg_params = {num_pixels, pcg_max_iter, pcg_step_r, pcg_tol,
+        true};
 
     // Init pixel data.
     puts("Reading pixel data.");
@@ -221,21 +222,16 @@ main(int argc, char **argv)
     // Init map coords.
     init_uniform_map_coords(lx, ly, lz, map_nx, map_ny, map_nz, map_coords);
 
-    // Init PCG Params.
-    pcg_params->max_iter = pcg_max_iter;
-    pcg_params->step_r = pcg_step_r;
-    pcg_params->tol = pcg_tol;
-
     //
     // Reconstruction
     //
 
     // convert pixel format.
-    WPixel *wpixels = (WPixel *) pixels;
+    WPixel* wpixels = (WPixel *) pixels;
     pixel_to_wpixel(num_pixels, pixels, wpixels);
 
     // Create x solver.
-    WFX_W *wfx = new WFX_W(num_pixels, wpixels, s_params);
+    WFVectorW *wf_vector = new WFVectorW(num_pixels, wpixels, s_params);
 
     // x solve
     double *x = new double[num_pixels];
@@ -245,16 +241,16 @@ main(int argc, char **argv)
 
     if (solve_via_pcg) {
         // true for verbose option.
-        wfx->solve_pcg(x, pcg_params, true);
+        wf_vector->solve_pcg(pcg_params, x);
     }
     else {
         // true for verbose and exact.
-        wfx->solve_cf(x, true, true);
+        wf_vector->solve_cf(x, true, true);
     }
 
     // map multiply
     // make pixel coords
-    const Point * const pixel_coords =
+    const Point* const pixel_coords =
         points_from_pixels_alloc(num_pixels, pixels);
 
     double *m = new double[num_map_points];
@@ -267,10 +263,13 @@ main(int argc, char **argv)
     fwrite(m, sizeof(double), num_map_points, map_file);
     fclose(map_file);
 
-    /*
     if (option_noise_covar) {
         puts("Computing covariance in N >> S limit.");
-        //ds_smp_w_spm(map);
+        NPixel* npixels = (NPixel *)pixels;
+        wpixel_to_pixel(num_pixels, wpixels, pixels);
+        pixel_to_npixel(num_pixels, pixels, npixels);
+        sigma_m_noise_dom(num_pixels, npixels, num_map_points, map_coords,
+            s_params, m);
         map_file = fopen("map_covar_nd.bin", "w");
         fwrite(m, sizeof(double), num_map_points, map_file);
         fclose(map_file);
@@ -278,15 +277,19 @@ main(int argc, char **argv)
 
     if (option_map_covar) {
         puts("Computing covariance diag.");
-        //ds_map_covar_diag(map);
+        NPixel* npixels = (NPixel *)pixels;
+        wpixel_to_pixel(num_pixels, wpixels, pixels);
+        pixel_to_npixel(num_pixels, pixels, npixels);
+        MapCovarDiag map_covar_diag(num_pixels, npixels, num_map_points,
+            map_coords, s_params);
+        map_covar_diag.solve_pcg(pcg_params, m);
         map_file = fopen("map_covar.bin", "w");
         fwrite(m, sizeof(double), num_map_points, map_file);
         fclose(map_file);
     }
-    */
 
-    delete pcg_params;
     delete s_params;
+    delete wf_vector;
     delete [] map_coords;
     delete [] pixels;
 

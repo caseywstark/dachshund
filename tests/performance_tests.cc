@@ -17,7 +17,7 @@ class PerformanceRegressionTest : public testing::Test {
         const std::string pixel_data_path = "tests/small_pixel_data.bin";
 
         s_params = new SignalCovarParams(0.05, 2.0, 2.0);
-        pcg_params = {num_pixels, 100, 100, 1e-2, false};
+        pcg_params = {num_pixels, 1000, 50, 1e-2, false};
 
         pixels = new Pixel[num_pixels];
         read_pixel_data(pixel_data_path, num_pixels, pixels);
@@ -56,16 +56,24 @@ TEST_F(PerformanceRegressionTest, wf_vector_sn_solve_time) {
     timer.reset();
     wfx_sn->solve_pcg(pcg_params, x);
     double elapsed = timer.elapsed();
-    printf("    Took %.2f s (typically 0.7 s on 2.2 GHz)\n", elapsed);
-    EXPECT_LT(elapsed, 1.0);
+    printf("    Took %.2f s (typically 2.1 s on 2.2 GHz)\n", elapsed);
+    EXPECT_LT(elapsed, 3.0);
+
+    FILE *f = fopen("new_vec_sn.bin", "w");
+    fwrite(x, sizeof(double), num_pixels, f);
+    fclose(f);
 }
 
 TEST_F(PerformanceRegressionTest, wf_vector_w_solve_time) {
     timer.reset();
     wfx_w->solve_pcg(pcg_params, x);
     double elapsed = timer.elapsed();
-    printf("    Took %.2f s (typically 0.7 s on 2.2 GHz)\n", elapsed);
-    EXPECT_LT(elapsed, 1.0);
+    printf("    Took %.2f s (typically 2.1 s on 2.2 GHz)\n", elapsed);
+    EXPECT_LT(elapsed, 3.0);
+
+    FILE *f = fopen("new_vec_w.bin", "w");
+    fwrite(x, sizeof(double), num_pixels, f);
+    fclose(f);
 }
 
 TEST_F(PerformanceRegressionTest, map_multiply_time) {

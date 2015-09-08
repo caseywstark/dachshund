@@ -21,8 +21,7 @@ struct Pixel {
     double d;
 };
 
-Point *
-points_from_pixels_alloc(const int n, Pixel * const pixels);
+Point* points_from_pixels_alloc(const int n, Pixel * const pixels);
 
 // alternate pixel formats for performance in loops
 
@@ -34,11 +33,9 @@ struct NPixel {
     double d;
 };
 
-void
-pixel_to_npixel(const int n, Pixel * const p, NPixel * const np);
+void pixel_to_npixel(const int n, Pixel * const p, NPixel * const np);
 
-void
-npixel_to_pixel(const int n, NPixel * const np, Pixel * const p);
+void npixel_to_pixel(const int n, NPixel * const np, Pixel * const p);
 
 struct WPixel{
     double x;
@@ -48,10 +45,8 @@ struct WPixel{
     double wd;
 };
 
-void
-pixel_to_wpixel(const int n, Pixel * const p, WPixel * const wp);
+void pixel_to_wpixel(const int n, Pixel* const p, WPixel* const wp);
 
-void
-wpixel_to_pixel(const int n, WPixel * const wp, Pixel * const p);
+void wpixel_to_pixel(const int n, WPixel* const wp, Pixel* const p);
 
 #endif
