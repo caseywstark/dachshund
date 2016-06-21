@@ -7,11 +7,13 @@ Building
 --------
 
 Dachshund is written in C++. You will need a C++ compiler, preferably with
-OpenMP support.
+OpenMP support.  On NERSC, make sure to use the gcc compiler rather than
+the default intel compiler (see http://www.nersc.gov/users/software/compilers/gnu/).
 
-The make system is straightforward. The root `Makefile` includes the
-`platform.make` file, which controls some system-specific settings. There are
-some examples in the `platforms` directory.
+The make system is straightforward. Create the 'platform.make' file by
+copying the relevant file from the 'platforms' directory.  The 'platform.make'
+file controls some system-specific settings, and there are examples in the
+'platforms' directory.
 
 The default `make` target builds the dachshund library, the dachshund
 application, and runs the test suite.
