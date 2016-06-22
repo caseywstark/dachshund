@@ -32,11 +32,11 @@ $(LIB_TARGET): $(LIB_OBJS)
 
 $(APP_TARGET): $(LIB_TARGET) $(APP_OBJS)
 	@echo [MAKE] Linking app.
-	$(CXX) $(LDFLAGS) -o $@ $(LIB_TARGET) $(APP_OBJS) $(LIBS)
+	$(CXX) -L. $(LDFLAGS) -o $@ $(APP_OBJS) $(LIB_TARGET) $(LIBS)
 
 $(TEST_TARGET): $(LIB_TARGET) $(TEST_OBJS)
 	@echo [MAKE] Linking test runner.
-	$(CXX) $(LDFLAGS) -o $@ $(LIB_TARGET) $(TEST_OBJS) $(LIBS)
+	$(CXX) -L. $(LDFLAGS) -o $@ $(TEST_OBJS) $(LIB_TARGET) $(LIBS)
 
 .PHONY: tests
 tests: $(TEST_TARGET)

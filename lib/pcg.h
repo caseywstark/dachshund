@@ -5,7 +5,7 @@
 #include <cmath>
 #include <functional>
 #include <vector>
-
+#include <stdio.h>
 #include "linalg.h"
 
 // PCG data structs
